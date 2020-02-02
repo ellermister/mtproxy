@@ -60,11 +60,11 @@ function pid_exists(){
 
 install(){
   if check_sys packageManager yum; then
-    yum install openssl-devel zlib-devel
-    yum groupinstall "Development Tools"
+    yum install -y openssl-devel zlib-devel
+    yum groupinstall -y "Development Tools"
   elif check_sys packageManager apt; then
     apt-get -y update
-    apt install git curl build-essential libssl-dev zlib1g-dev
+    apt install -y git curl build-essential libssl-dev zlib1g-dev
   fi
 
   if [ ! -d 'MTProxy' ];then
@@ -144,8 +144,6 @@ config_mtp(){
   curl -s https://core.telegram.org/getProxySecret -o proxy-secret
   curl -s https://core.telegram.org/getProxyConfig -o proxy-multi.conf
   secret=$(head -c 16 /dev/urandom | xxd -ps)
-  domain_hex=$(xxd -pu <<< $input_domain | sed 's/0a//g')
-  client_secret="ee${secret}${domain_hex}"
   cat >./mtp_config <<EOF
 #!/bin/bash
 secret="${secret}"
@@ -170,15 +168,16 @@ info_mtp(){
   status_mtp
   if [ $? == 1 ];then
     source ./mtp_config
-    public_ip=`curl -s https://api.ip.sb/ip`
+    public_ip=$(curl -s https://api.ip.sb/ip)
+    domain_hex=$(xxd -pu <<< $domain | sed 's/0a//g')
+    client_secret="ee${secret}${domain_hex}"
     echo -e "TMProxy+TLS代理: \033[32m运行中\033[0m"
     echo -e "服务器IP：\033[31m$public_ip\033[0m"
     echo -e "服务器端口：\033[31m$port\033[0m"
     echo -e "MTProxy Secret:  \033[31m$secret\033[0m"
-    echo -e "TG一键链接: https://t.me/proxy?server=${ip}&port=${port}&secret=${secret}"
-    echo -e "TG一键链接: tg://proxy?server=${ip}&port=${port}&secret=${secret}"
+    echo -e "TG一键链接: https://t.me/proxy?server=${ip}&port=${port}&secret=${client_secret}"
+    echo -e "TG一键链接: tg://proxy?server=${ip}&port=${port}&secret=${client_secret}"
   else
-    public_ip=`curl -s https://api.ip.sb/ip`
     echo -e "TMProxy+TLS代理: \033[33m已停止\033[0m"
   fi
 }
