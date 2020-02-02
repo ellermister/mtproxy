@@ -194,7 +194,7 @@ run_mtp(){
     public_ip=`curl -s https://api.ip.sb/ip`
     nat_info=""
     if [ $nat_ip ne $public_ip ];then
-      nat_info="--nat-info ${nat_ip}:{$public_ip}"
+      nat_info="--nat-info ${nat_ip}:${public_ip}"
     fi
     ./mtproto-proxy -u nobody -p $web_port -H $port -S $secret --aes-pwd proxy-secret proxy-multi.conf -M 1 --domain $domain $nat_info >/dev/null 2>&1 &
     
@@ -211,7 +211,7 @@ debug_mtp(){
   public_ip=`curl -s https://api.ip.sb/ip`
   nat_info=""
   if [ $nat_ip ne $public_ip ];then
-    nat_info="--nat-info ${nat_ip}:{$public_ip}"
+    nat_info="--nat-info ${nat_ip}:${public_ip}"
   fi
   echo "当前正在运行调试模式："
   echo -e "\t你随时可以通过 Ctrl+C 进行取消操作"
