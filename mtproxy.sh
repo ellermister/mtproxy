@@ -59,6 +59,12 @@ function pid_exists(){
 }
 
 install(){
+  cd $WORKDIR
+  if [ ! -d "./pid" ];then
+    mkdir "./pid"
+  fi
+
+  exit;
   if check_sys packageManager yum; then
     yum install -y openssl-devel zlib-devel
     yum groupinstall -y "Development Tools"
@@ -75,7 +81,6 @@ install(){
   cp -f $WORKDIR/MTProxy/objs/bin/mtproto-proxy $WORKDIR
   cd $WORKDIR
 }
-
 
 
 config_mtp(){
