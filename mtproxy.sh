@@ -73,6 +73,7 @@ install(){
   cd MTProxy
   make && cd objs/bin
   cp -f $WORKDIR/MTProxy/objs/bin/mtproto-proxy $WORKDIR
+  cd $WORKDIR
 }
 
 
@@ -234,6 +235,7 @@ else
   if [ ! -f "$WORKDIR/mtp_config" ];then
     echo "MTProxyTLS一键安装运行绿色脚本"
     echo "================================="
+    install
     config_mtp
     run_mtp
   else
