@@ -190,7 +190,12 @@ run_mtp(){
     echo -e "提醒：\033[33mMTProxy已经运行，请勿重复运行!\033[0m"
   else
     source ./mtp_config
-    ./mtproto-proxy -u nobody -p $web_port -H $port -S $secret --aes-pwd proxy-secret proxy-multi.conf -M 1 --domain $domain >/dev/null 2>&1 &
+    nat_ip=`ip a | grep inet | grep -v 127.0.0.1 | grep -v inet6 awk '{print $2}' | cut -d "/" -f1`
+    public_ip=`curl -s https://api.ip.sb/ip`
+    if [ $nat_ip ne $public_ip ];then
+      nat_info="--nat-info ${nat_ip}:{$public_ip}"
+    fi
+    ./mtproto-proxy -u nobody -p $web_port -H $port -S $secret --aes-pwd proxy-secret proxy-multi.conf -M 1 --domain $domain $nat_info >/dev/null 2>&1 &
     echo $!>$pid_file
     sleep 2
     info_mtp
@@ -200,10 +205,15 @@ run_mtp(){
 debug_mtp(){
   cd $WORKDIR
   source ./mtp_config
+  nat_ip=`ip a | grep inet | grep -v 127.0.0.1 | grep -v inet6 awk '{print $2}' | cut -d "/" -f1`
+  public_ip=`curl -s https://api.ip.sb/ip`
+  if [ $nat_ip ne $public_ip ];then
+    nat_info="--nat-info ${nat_ip}:{$public_ip}"
+  fi
   echo "当前正在运行调试模式："
   echo -e "\t你随时可以通过 Ctrl+C 进行取消操作"
-  echo " ./mtproto-proxy -u nobody -p $web_port -H $port -S $secret --aes-pwd proxy-secret proxy-multi.conf -M 1 --domain $domain"
-  ./mtproto-proxy -u nobody -p $web_port -H $port -S $secret --aes-pwd proxy-secret proxy-multi.conf -M 1 --domain $domain
+  echo " ./mtproto-proxy -u nobody -p $web_port -H $port -S $secret --aes-pwd proxy-secret proxy-multi.conf -M 1 --domain $domain $nat_info"
+  ./mtproto-proxy -u nobody -p $web_port -H $port -S $secret --aes-pwd proxy-secret proxy-multi.conf -M 1 --domain $domain $nat_info
 }
 
 stop_mtp(){
