@@ -64,13 +64,27 @@ install(){
     mkdir "./pid"
   fi
 
+  echo a|xxd -ps &> /dev/null
+  xxd_status=1
+  if [ $? != "0" ];then
+    xxd_status=0
+  fi
+
   if check_sys packageManager yum; then
     yum install -y openssl-devel zlib-devel
     yum groupinstall -y "Development Tools"
+    if [ $xxd_status == 0 ];then
+      yum install -y vim-common
+    fi
   elif check_sys packageManager apt; then
     apt-get -y update
     apt install -y git curl build-essential libssl-dev zlib1g-dev
+    if [ $xxd_status == 0 ];then
+      apt install -y vim-common
+    fi
   fi
+
+
 
   if [ ! -d 'MTProxy' ];then
     git clone https://github.com/TelegramMessenger/MTProxy
@@ -232,7 +246,6 @@ stop_mtp(){
     echo "停止任务失败"
   fi
 }
-
 
 param=$1
 if [[ "start" == $param ]];then
