@@ -96,8 +96,14 @@ install(){
 }
 
 
+print_line(){
+  echo -e "========================================="
+}
+
+
 config_mtp(){
   cd $WORKDIR
+  echo -e "检测到您的配置文件不存在, 为您指引生成!" && print_line
   while true
   do
   default_port=443
@@ -159,6 +165,25 @@ config_mtp(){
   echo -e "[\033[33m错误\033[0m] 域名无法访问,请重新输入或更换域名!"
   done
 
+  # proxy tag
+  while true
+  do
+  default_tag=""
+  echo -e "请输入你需要推广的TAG："
+  echo -e "若没有,请联系 @MTProxybot 进一步创建你的TAG"
+  read -p "(留空则跳过):" input_tag
+  [ -z "${input_tag}" ] && input_tag=${default_tag}
+  if [ -z "$input_tag" ] || [[ "$input_tag" =~ ^[A-Za-z0-9]{32}$ ]]; then
+    echo
+    echo "---------------------------"
+    echo "PROXY TAG = ${input_tag}"
+    echo "---------------------------"
+    echo
+    break
+  fi
+  echo -e "[\033[33m错误\033[0m] TAG格式不正确!"
+  done
+
   curl -s https://core.telegram.org/getProxySecret -o proxy-secret
   curl -s https://core.telegram.org/getProxyConfig -o proxy-multi.conf
   secret=$(head -c 16 /dev/urandom | xxd -ps)
@@ -168,6 +193,7 @@ secret="${secret}"
 port=${input_port}
 web_port=${input_manage_port}
 domain="${input_domain}"
+proxy_tag="${input_tag}"
 EOF
   echo -e "配置已经生成完毕!"
 }
@@ -214,7 +240,9 @@ run_mtp(){
     if [[ $nat_ip != $public_ip ]];then
       nat_info="--nat-info ${nat_ip}:${public_ip}"
     fi
-    ./mtproto-proxy -u nobody -p $web_port -H $port -S $secret --aes-pwd proxy-secret proxy-multi.conf -M 1 --domain $domain $nat_info >/dev/null 2>&1 &
+    tag_arg=""
+    [[ -n "$proxy_tag" ]] && tag_arg="-P $proxy_tag"
+    ./mtproto-proxy -u nobody -p $web_port -H $port -S $secret --aes-pwd proxy-secret proxy-multi.conf -M 1 $tag_arg --domain $domain $nat_info >/dev/null 2>&1 &
     
     echo $!>$pid_file
     sleep 2
@@ -230,11 +258,13 @@ debug_mtp(){
   nat_info=""
   if [[ $nat_ip != $public_ip ]];then
       nat_info="--nat-info ${nat_ip}:${public_ip}"
-    fi
+  fi
+  tag_arg=""
+  [[ -n "$proxy_tag" ]] && tag_arg="-P $proxy_tag"
   echo "当前正在运行调试模式："
   echo -e "\t你随时可以通过 Ctrl+C 进行取消操作"
-  echo " ./mtproto-proxy -u nobody -p $web_port -H $port -S $secret --aes-pwd proxy-secret proxy-multi.conf -M 1 --domain $domain $nat_info"
-  ./mtproto-proxy -u nobody -p $web_port -H $port -S $secret --aes-pwd proxy-secret proxy-multi.conf -M 1 --domain $domain $nat_info
+  echo " ./mtproto-proxy -u nobody -p $web_port -H $port -S $secret --aes-pwd proxy-secret proxy-multi.conf -M 1 $tag_arg --domain $domain $nat_info"
+  ./mtproto-proxy -u nobody -p $web_port -H $port -S $secret --aes-pwd proxy-secret proxy-multi.conf -M 1 $tag_arg --domain $domain $nat_info
 }
 
 stop_mtp(){
@@ -246,6 +276,7 @@ stop_mtp(){
     echo "停止任务失败"
   fi
 }
+
 
 param=$1
 if [[ "start" == $param ]];then
@@ -261,17 +292,18 @@ elif  [[ "restart" == $param ]];then
   stop_mtp
   run_mtp
 else
-  if [ ! -f "$WORKDIR/mtp_config" ];then
+  if [ ! -f "$WORKDIR/mtp_config" ] && [ ! -f "$WORKDIR/mtproto-proxy" ];then
     echo "MTProxyTLS一键安装运行绿色脚本"
-    echo "================================="
+    print_line
     install
     config_mtp
     run_mtp
   else
+    [ ! -f "$WORKDIR/mtp_config" ] && config_mtp
     echo "MTProxyTLS一键安装运行绿色脚本"
-    echo "================================="
+    print_line
     info_mtp
-    echo "================================="
+    print_line
     echo -e "配置文件: $WORKDIR/mtp_config"
     echo -e "卸载方式：直接删除当前目录下文件即可"
     echo "使用方式:"
