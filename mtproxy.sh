@@ -64,8 +64,8 @@ install(){
     mkdir "./pid"
   fi
 
-  echo a|xxd -ps &> /dev/null
   xxd_status=1
+  echo a|xxd -ps &> /dev/null
   if [ $? != "0" ];then
     xxd_status=0
   fi
