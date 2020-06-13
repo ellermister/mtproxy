@@ -213,6 +213,7 @@ info_mtp(){
   if [ $? == 1 ];then
     source ./mtp_config
     public_ip=$(curl -s https://api.ip.sb/ip --ipv4)
+    [ -z "$public_ip" ] && public_ip=$(curl -s ipinfo.io/ip --ipv4)
     domain_hex=$(xxd -pu <<< $domain | sed 's/0a//g')
     client_secret="ee${secret}${domain_hex}"
     echo -e "TMProxy+TLS代理: \033[32m运行中\033[0m"
@@ -236,6 +237,7 @@ run_mtp(){
     source ./mtp_config
     nat_ip=$(echo $(ip a | grep inet | grep -v 127.0.0.1 | grep -v inet6 | awk '{print $2}' | cut -d "/" -f1 |awk 'NR==1 {print $1}'))
     public_ip=`curl -s https://api.ip.sb/ip --ipv4`
+    [ -z "$public_ip" ] && public_ip=$(curl -s ipinfo.io/ip --ipv4)
     nat_info=""
     if [[ $nat_ip != $public_ip ]];then
       nat_info="--nat-info ${nat_ip}:${public_ip}"
@@ -255,6 +257,7 @@ debug_mtp(){
   source ./mtp_config
   nat_ip=$(echo $(ip a | grep inet | grep -v 127.0.0.1 | grep -v inet6 | awk '{print $2}' | cut -d "/" -f1 |awk 'NR==1 {print $1}'))
   public_ip=`curl -s https://api.ip.sb/ip --ipv4`
+  [ -z "$public_ip" ] && public_ip=$(curl -s ipinfo.io/ip --ipv4)
   nat_info=""
   if [[ $nat_ip != $public_ip ]];then
       nat_info="--nat-info ${nat_ip}:${public_ip}"
