@@ -70,29 +70,41 @@ install(){
     xxd_status=0
   fi
 
-  if check_sys packageManager yum; then
-    yum install -y openssl-devel zlib-devel
-    yum groupinstall -y "Development Tools"
-    if [ $xxd_status == 0 ];then
+  if [[ "`uname -m`" != "x86_64" ]]; then
+    if check_sys packageManager yum; then
+      yum install -y openssl-devel zlib-devel
+      yum groupinstall -y "Development Tools"
+      if [ $xxd_status == 0 ];then
+        yum install -y vim-common
+      fi
+    elif check_sys packageManager apt; then
+      apt-get -y update
+      apt install -y git curl build-essential libssl-dev zlib1g-dev
+      if [ $xxd_status == 0 ];then
+        apt install -y vim-common
+      fi
+    fi 
+  else
+    if check_sys packageManager yum &&  [ $xxd_status == 0 ]; then
       yum install -y vim-common
-    fi
-  elif check_sys packageManager apt; then
-    apt-get -y update
-    apt install -y git curl build-essential libssl-dev zlib1g-dev
-    if [ $xxd_status == 0 ];then
+    elif check_sys packageManager apt &&  [ $xxd_status == 0 ]; then
+      apt-get -y update
       apt install -y vim-common
     fi
   fi
 
-
-
-  if [ ! -d 'MTProxy' ];then
-    git clone https://github.com/TelegramMessenger/MTProxy
-  fi;
-  cd MTProxy
-  make && cd objs/bin
-  cp -f $WORKDIR/MTProxy/objs/bin/mtproto-proxy $WORKDIR
-  cd $WORKDIR
+  if [[ "`uname -m`" != "x86_64" ]];then
+    if [ ! -d 'MTProxy' ];then
+      git clone https://github.com/TelegramMessenger/MTProxy
+    fi;
+    cd MTProxy
+    make && cd objs/bin
+    cp -f $WORKDIR/MTProxy/objs/bin/mtproto-proxy $WORKDIR
+    cd $WORKDIR
+  else
+    wget https://github.com/ellermister/mtproxy/releases/download/0.01/mtproto-proxy -O mtproto-proxy -q
+    chmod +x mtproto-proxy
+  fi
 }
 
 
