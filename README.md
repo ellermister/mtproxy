@@ -70,6 +70,6 @@ rm -rf /home/mtproxy
 通过编辑文件`/etc/rc.local`将如下代码加入到开机自启脚本中：
 
 ```bash
-bash /home/mtproxy/mtproxy.sh start > /dev/null 2>&1 &
+cd /home/mtproxy && bash mtproxy.sh start > /dev/null 2>&1 &
 ```
 
