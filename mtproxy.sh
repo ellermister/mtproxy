@@ -2,6 +2,7 @@
 cd `dirname $0`
 WORKDIR=$(cd $(dirname $0); pwd)
 pid_file=$WORKDIR/pid/pid_mtproxy
+VERSION="0.03"
 
 check_sys(){
     local checkType=$1
@@ -160,12 +161,12 @@ config_mtp(){
   # domain
   while true
   do
-  default_domain="azure.microsoft.com"
+  default_domain="cloudflare.com"
   echo -e "请输入一个需要伪装的域名："
   read -p "(默认域名: ${default_domain}):" input_domain
   [ -z "${input_domain}" ] && input_domain=${default_domain}
   http_code=$(curl -I -m 10 -o /dev/null -s -w %{http_code} $input_domain)
-  echo "状态码：$http_code"
+  # echo "状态码：$http_code"
   if [ $http_code -eq "200" ] || [ $http_code -eq "302" ]; then
     echo
     echo "---------------------------"
@@ -174,15 +175,42 @@ config_mtp(){
     echo
     break
   fi
-  echo -e "[\033[33m错误\033[0m] 域名无法访问,请重新输入或更换域名!"
+  echo -e "[\033[33m${http_code}错误\033[0m] 域名无法访问,请重新输入或更换域名!"
+  done
+  
+  
+  # secret
+  while true
+  do
+  default_secret=$(head -c 16 /dev/urandom | xxd -ps)
+  echo -e "请输入你想要设置的secret"
+  read -p "(默认secret: ${default_secret}):" input_secret
+  [ -z "${input_secret}" ] && input_secret=${default_secret}
+  if [ -z "$input_secret" ] || [[ "$input_secret" =~ ^[A-Fa-f0-9]{32}$ ]]; then
+    echo
+    echo "---------------------------"
+    echo "SECRET = ${input_secret}"
+    echo "---------------------------"
+    echo
+	secret=${input_secret}
+    break
+  fi
+  echo -e "[\033[33m错误\033[0m] secret格式不正确!"
   done
 
+  # getip
+  public_ip=$(curl -s https://api.ip.sb/ip --ipv4)
+  [ -z "$public_ip" ] && public_ip=$(curl -s ipinfo.io/ip --ipv4)
+  
   # proxy tag
   while true
   do
   default_tag=""
   echo -e "请输入你需要推广的TAG："
   echo -e "若没有,请联系 @MTProxybot 进一步创建你的TAG"
+  echo -e "|IP: ${public_ip}"
+  echo -e "|PORT: ${input_port}"
+  echo -e "|SECRET: ${secret}"
   read -p "(留空则跳过):" input_tag
   [ -z "${input_tag}" ] && input_tag=${default_tag}
   if [ -z "$input_tag" ] || [[ "$input_tag" =~ ^[A-Za-z0-9]{32}$ ]]; then
@@ -196,9 +224,10 @@ config_mtp(){
   echo -e "[\033[33m错误\033[0m] TAG格式不正确!"
   done
 
+
+
   curl -s https://core.telegram.org/getProxySecret -o proxy-secret
   curl -s https://core.telegram.org/getProxyConfig -o proxy-multi.conf
-  secret=$(head -c 16 /dev/urandom | xxd -ps)
   cat >./mtp_config <<EOF
 #!/bin/bash
 secret="${secret}"
@@ -246,6 +275,7 @@ run_mtp(){
   if [ $? == 1 ];then
     echo -e "提醒：\033[33mMTProxy已经运行，请勿重复运行!\033[0m"
   else
+    curl -s https://core.telegram.org/getProxyConfig -o proxy-multi.conf
     source ./mtp_config
     nat_ip=$(echo $(ip a | grep inet | grep -v 127.0.0.1 | grep -v inet6 | awk '{print $2}' | cut -d "/" -f1 |awk 'NR==1 {print $1}'))
     public_ip=`curl -s https://api.ip.sb/ip --ipv4`
@@ -292,6 +322,30 @@ stop_mtp(){
   fi
 }
 
+check_update(){
+  echo "开始检查更新..."
+  github_version=$(curl -s https://raw.githubusercontent.com/bearx163/mtproxy/master/version)
+  if [[ $VERSION < $github_version ]];then
+    read -p "版本${github_version}已经准备就绪，是否更新？[y/N]: " input_update
+	if [[ $input_update =~ ^[Y-Yy-y]{1}$ ]];then
+	  echo "即将：关闭旧脚本"
+	  stop_mtp
+	  echo "开始下载.."
+	  result_code=$(curl -s -o $0 https://raw.githubusercontent.com/ellermister/mtproxy/master/mtproxy.sh -w %{http_code})
+	  if [[ $result_code -eq "200" ]];then
+	    echo "更新成功！"
+	  else
+	    echo -e "更新失败，状态码: ${result_code}"
+		echo -e "请尝试前往Github手动更新！"
+		print_line
+	  fi
+	else
+	  echo "取消已取消"
+	fi
+  else
+    echo "没有最新版本呢~"
+  fi
+}
 
 param=$1
 if [[ "start" == $param ]];then
@@ -306,9 +360,12 @@ elif  [[ "debug" == $param ]];then
 elif  [[ "restart" == $param ]];then
   stop_mtp
   run_mtp
+elif [[ "update" == $param ]];then
+  check_update
 else
   if [ ! -f "$WORKDIR/mtp_config" ] && [ ! -f "$WORKDIR/mtproto-proxy" ];then
     echo "MTProxyTLS一键安装运行绿色脚本"
+	echo -e "版本: ${VERSION}"
     print_line
     install
     config_mtp
@@ -316,6 +373,7 @@ else
   else
     [ ! -f "$WORKDIR/mtp_config" ] && config_mtp
     echo "MTProxyTLS一键安装运行绿色脚本"
+	echo -e "版本: ${VERSION}"
     print_line
     info_mtp
     print_line
@@ -326,5 +384,6 @@ else
     echo -e "\t调试运行 bash $0 debug"
     echo -e "\t停止服务 bash $0 stop"
     echo -e "\t重启服务 bash $0 restart"
+    echo -e "\t更新脚本 bash $0 update"
   fi
 fi
