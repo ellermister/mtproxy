@@ -16,7 +16,7 @@ Telegram群组：https://t.me/EllerCN
 
 ```bash
 mkdir ./mtproxy && cd ./mtproxy
-curl -s -o mtproxy.sh lovelyhaochi && chmod +x mtproxy.sh && bash mtproxy.sh
+curl -s -o mtproxy.sh https://raw.githubusercontent.com/LovelyHaochi/mtproxy/master/mtproxy.sh && chmod +x mtproxy.sh && bash mtproxy.sh
 ```
 
  ![mtproxy.sh](https://raw.githubusercontent.com/ellermister/mtproxy/master/mtproxy.jpg)
