@@ -15,8 +15,8 @@ Telegram群组：https://t.me/EllerCN
 执行如下代码进行安装
 
 ```bash
-mkdir ./mtproxy && cd ./mtproxy
-curl -s -o mtproxy.sh https://raw.githubusercontent.com/LovelyHaochi/mtproxy/master/mtproxy.sh && chmod +x mtproxy.sh && bash mtproxy.sh
+mkdir /home/mtproxy && cd /home/mtproxy
+curl -s -o mtproxy.sh https://raw.githubusercontent.com/ellermister/mtproxy/master/mtproxy.sh && chmod +x mtproxy.sh && bash mtproxy.sh
 ```
 
  ![mtproxy.sh](https://raw.githubusercontent.com/ellermister/mtproxy/master/mtproxy.jpg)
@@ -51,10 +51,6 @@ bash mtproxy.sh stop
 bash mtproxy.sh restart
 ```
 
-更新脚本
-```bash
-bash mtproxy.sh update
-```
 
 
 ## 卸载安装
@@ -76,4 +72,3 @@ rm -rf /home/mtproxy
 ```bash
 cd /home/mtproxy && bash mtproxy.sh start > /dev/null 2>&1 &
 ```
-
