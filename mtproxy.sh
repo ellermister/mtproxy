@@ -165,8 +165,7 @@ config_mtp(){
   read -p "(默认域名: ${default_domain}):" input_domain
   [ -z "${input_domain}" ] && input_domain=${default_domain}
   http_code=$(curl -I -m 10 -o /dev/null -s -w %{http_code} $input_domain)
-  echo "状态码：$http_code"
-  if [ $http_code -eq "200" ] || [ $http_code -eq "302" ]; then
+  if [ $http_code -eq "200" ] || [ $http_code -eq "302" ] || [ $http_code -eq "301" ]; then
     echo
     echo "---------------------------"
     echo "伪装域名 = ${input_domain}"
@@ -174,15 +173,23 @@ config_mtp(){
     echo
     break
   fi
-  echo -e "[\033[33m错误\033[0m] 域名无法访问,请重新输入或更换域名!"
+  echo -e "[\033[33m状态码：${http_code}错误\033[0m] 域名无法访问,请重新输入或更换域名!"
   done
+  
+   # config info
+  public_ip=$(curl -s https://api.ip.sb/ip --ipv4)
+  [ -z "$public_ip" ] && public_ip=$(curl -s ipinfo.io/ip --ipv4)
+  secret=$(head -c 16 /dev/urandom | xxd -ps)
 
   # proxy tag
   while true
   do
   default_tag=""
   echo -e "请输入你需要推广的TAG："
-  echo -e "若没有,请联系 @MTProxybot 进一步创建你的TAG"
+  echo -e "若没有,请联系 @MTProxybot 进一步创建你的TAG, 可能需要信息如下："
+  echo -e "IP: ${public_ip}"
+  echo -e "PORT: ${input_port}"
+  echo -e "SECRET(可以随便填): ${secret}"
   read -p "(留空则跳过):" input_tag
   [ -z "${input_tag}" ] && input_tag=${default_tag}
   if [ -z "$input_tag" ] || [[ "$input_tag" =~ ^[A-Za-z0-9]{32}$ ]]; then
@@ -198,7 +205,6 @@ config_mtp(){
 
   curl -s https://core.telegram.org/getProxySecret -o proxy-secret
   curl -s https://core.telegram.org/getProxyConfig -o proxy-multi.conf
-  secret=$(head -c 16 /dev/urandom | xxd -ps)
   cat >./mtp_config <<EOF
 #!/bin/bash
 secret="${secret}"
@@ -246,6 +252,7 @@ run_mtp(){
   if [ $? == 1 ];then
     echo -e "提醒：\033[33mMTProxy已经运行，请勿重复运行!\033[0m"
   else
+    curl -s https://core.telegram.org/getProxyConfig -o proxy-multi.conf
     source ./mtp_config
     nat_ip=$(echo $(ip a | grep inet | grep -v 127.0.0.1 | grep -v inet6 | awk '{print $2}' | cut -d "/" -f1 |awk 'NR==1 {print $1}'))
     public_ip=`curl -s https://api.ip.sb/ip --ipv4`
