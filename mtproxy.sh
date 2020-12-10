@@ -1,6 +1,6 @@
 #!/bin/bash
-cd `dirname $0`
-WORKDIR=$(cd $(dirname $0); pwd)
+WORKDIR=$(dirname $(readlink -f $0))
+cd $WORKDIR
 pid_file=$WORKDIR/pid/pid_mtproxy
 
 check_sys(){
@@ -299,6 +299,36 @@ stop_mtp(){
   fi
 }
 
+fix_mtp(){
+  if [ `id -u` != 0 ];then
+    echo -e "> ※ (该功能仅限 root 用户执行)"
+  fi
+
+  echo -e "> 开始清空防火墙规则/停止防火墙/卸载防火墙..."
+  print_line
+
+  if check_sys packageManager yum; then
+    systemctl stop firewalld.service
+    systemctl disable firewalld.service
+    systemctl stop iptables
+    systemctl disable iptables
+    service stop iptables
+    yum remove -y iptables
+    yum remove -y firewalld
+  elif check_sys packageManager apt; then
+    iptables -F
+    iptables -t nat -F
+    iptables -P ACCEPT
+    iptables -t nat -P ACCEPT
+    service stop iptables
+    apt-get remove -y iptables
+    ufw disable
+  fi
+  echo -e "< 处理完毕，如有报错忽略即可..."
+  echo -e "< 如遇到端口冲突，请自行关闭相关程序"
+}
+
+
 
 param=$1
 if [[ "start" == $param ]];then
@@ -313,6 +343,8 @@ elif  [[ "debug" == $param ]];then
 elif  [[ "restart" == $param ]];then
   stop_mtp
   run_mtp
+elif  [[ "fix" == $param ]];then
+  fix_mtp
 else
   if [ ! -f "$WORKDIR/mtp_config" ] && [ ! -f "$WORKDIR/mtproto-proxy" ];then
     echo "MTProxyTLS一键安装运行绿色脚本"
@@ -326,6 +358,7 @@ else
     print_line
     info_mtp
     print_line
+    echo -e "脚本源码：https://github.com/ellermister/mtproxy"
     echo -e "配置文件: $WORKDIR/mtp_config"
     echo -e "卸载方式：直接删除当前目录下文件即可"
     echo "使用方式:"
@@ -333,5 +366,6 @@ else
     echo -e "\t调试运行 bash $0 debug"
     echo -e "\t停止服务 bash $0 stop"
     echo -e "\t重启服务 bash $0 restart"
+    echo -e "\t修复常见问题 bash $0 fix"
   fi
 fi
