@@ -72,14 +72,14 @@ install(){
 
   if [[ "`uname -m`" != "x86_64" ]]; then
     if check_sys packageManager yum; then
-      yum install -y openssl-devel zlib-devel
+      yum install -y openssl-devel zlib-devel iproute
       yum groupinstall -y "Development Tools"
       if [ $xxd_status == 0 ];then
         yum install -y vim-common
       fi
     elif check_sys packageManager apt; then
       apt-get -y update
-      apt install -y git curl build-essential libssl-dev zlib1g-dev
+      apt install -y git curl build-essential libssl-dev zlib1g-dev iproute2
       if [ $xxd_status == 0 ];then
         apt install -y vim-common
       fi
@@ -303,7 +303,20 @@ fix_mtp(){
   if [ `id -u` != 0 ];then
     echo -e "> ※ (该功能仅限 root 用户执行)"
   fi
+  
+  print_line
+  echo -e "> 开始安装/更新Iproute2..."
+  print_line
+  
+  if check_sys packageManager yum; then
+    yum update -y
+	yum install -y iproute
+  elif check_sys packageManager apt; then
+    apt-get update -y
+	apt-get install -y iproute2
+  fi	
 
+  print_line
   echo -e "> 开始清空防火墙规则/停止防火墙/卸载防火墙..."
   print_line
 
