@@ -302,18 +302,6 @@ stop_mtp(){
 fix_mtp(){
   if [ `id -u` != 0 ];then
     echo -e "> ※ (该功能仅限 root 用户执行)"
-  fi
-  
-  print_line
-  echo -e "> 开始安装/更新Iproute2..."
-  print_line
-  
-  if check_sys packageManager yum; then
-    yum update -y
-	yum install -y iproute
-  elif check_sys packageManager apt; then
-    apt-get update -y
-	apt-get install -y iproute2
   fi	
 
   print_line
@@ -337,6 +325,21 @@ fix_mtp(){
     apt-get remove -y iptables
     ufw disable
   fi
+  
+  print_line
+  echo -e "> 开始安装/更新iproute2..."
+  print_line
+  
+  if check_sys packageManager yum; then
+    yum install -y epel-release
+    yum update -y
+	yum install -y iproute
+  elif check_sys packageManager apt; then
+    apt-get install -y epel-release
+    apt-get update -y
+	apt-get install -y iproute2
+  fi
+  
   echo -e "< 处理完毕，如有报错忽略即可..."
   echo -e "< 如遇到端口冲突，请自行关闭相关程序"
 }
