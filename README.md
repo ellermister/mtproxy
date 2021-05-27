@@ -31,7 +31,7 @@ secret=$(head -c 16 /dev/urandom | xxd -ps)
 domain="cloudflare.com"
 docker run --name nginx-mtproxy -d -e secret="$secret" -e domain="$domain" -p 8080:80 -p 8443:443 ellermister/nginx-mtproxy:latest
  ```
-更多使用请参考： https://hub.docker.com/repository/docker/ellermister/nginx-mtproxy
+更多使用请参考： https://hub.docker.com/r/ellermister/nginx-mtproxy
 
 
 
