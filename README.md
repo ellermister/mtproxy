@@ -20,8 +20,18 @@ curl -s -o mtproxy.sh https://raw.githubusercontent.com/ellermister/mtproxy/mast
 ```
 
  ![mtproxy.sh](https://raw.githubusercontent.com/ellermister/mtproxy/master/mtproxy.jpg)
+ 
+ ## Docker安装
+The image integrates nginx and mtproxy+tls to disguise traffic, and uses a whitelist mode to deal with firewall detection.
 
+该镜像集成了nginx、mtproxy+tls 实现对流量的伪装，并采用**白名单**模式来应对防火墙的检测。
 
+ ```bash
+secret=$(head -c 16 /dev/urandom | xxd -ps)
+domain="cloudflare.com"
+docker run --name nginx-mtproxy -d -e secret="$secret" -e domain="$domain" -p 8080:80 -p 8443:443 ellermister/nginx-mtproxy:latest
+ ```
+更多使用请参考： https://hub.docker.com/repository/docker/ellermister/nginx-mtproxy
 
 
 
