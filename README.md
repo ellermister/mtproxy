@@ -21,7 +21,7 @@ curl -s -o mtproxy.sh https://raw.githubusercontent.com/ellermister/mtproxy/mast
 
  ![mtproxy.sh](https://raw.githubusercontent.com/ellermister/mtproxy/master/mtproxy.jpg)
  
- ## Docker安装
+ ## 白名单 MTProxy Docker 镜像
 The image integrates nginx and mtproxy+tls to disguise traffic, and uses a whitelist mode to deal with firewall detection.
 
 该镜像集成了nginx、mtproxy+tls 实现对流量的伪装，并采用**白名单**模式来应对防火墙的检测。
