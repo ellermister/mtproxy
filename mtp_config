@@ -1,0 +1,6 @@
+#!/bin/bash
+secret="4451023506896290666356006a67ce93"
+port=8443
+web_port=8888
+domain="azure.microsoft.com"
+proxy_tag="4451023506896290666356006a67ce91"
