@@ -20,6 +20,19 @@ set_config(){
 if [ ! -f $init_lock ];then
   cp "${mtp_config}.bak" "$mtp_config"
   echo 1>"$init_lock"
+  if [ ! "$secret" ]; then
+	secret=$(head -c 16 /dev/urandom | xxd -ps)
+  fi
+  
+  if [ ! "$ip_white_list" ]; then
+	ip_white_list='IPSEG'
+  fi
+  
+  if [ ip_white_list == "OFF" ]; then
+	echo "0.0.0.0/0" >> /etc/nginx/ip_white.conf
+  fi
+  
+  echo $ip_white_list > /var/ip_white_list
   set_config
 fi;
 

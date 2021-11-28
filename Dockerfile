@@ -34,3 +34,6 @@ RUN set -ex \
     && apt-get clean \
 	&& apt-get autoremove --purge -y \
     && rm -rf /var/lib/apt/lists/*
+
+EXPOSE 80
+EXPOSE 443
