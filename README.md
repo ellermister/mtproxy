@@ -26,6 +26,10 @@ The image integrates nginx and mtproxy+tls to disguise traffic, and uses a white
 
 该镜像集成了nginx、mtproxy+tls 实现对流量的伪装，并采用**白名单**模式来应对防火墙的检测。
 
+If you use this Docker image, you don't need to use the script, you can choose one of the two, don't mix it up.
+
+若使用该 Docker 镜像, 就不需要用脚本了，二者二选一，不要搞混了。
+
  ```bash
 secret=$(head -c 16 /dev/urandom | xxd -ps)
 domain="cloudflare.com"
@@ -88,4 +92,10 @@ rm -rf /home/mtproxy
 ```bash
 cd /home/mtproxy && bash mtproxy.sh start > /dev/null 2>&1 &
 ```
+
+## 引用项目
+
+- https://github.com/TelegramMessenger/MTProxy
+- https://github.com/9seconds/mtg
+
 
