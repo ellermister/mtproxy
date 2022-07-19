@@ -1,12 +1,12 @@
 # mtproxy
 
-MTProxyTLS一键安装绿色脚本
+MTProxyTLS 一键安装绿色脚本 [English](README-en.md)
 
 
 
 ## 交流群组
 
-Telegram群组：https://t.me/EllerHK
+Telegram 群组：https://t.me/EllerHK
 
 
 
@@ -24,7 +24,7 @@ curl -s -o mtproxy.sh https://raw.githubusercontent.com/ellermister/mtproxy/mast
  ## 白名单 MTProxy Docker 镜像
 The image integrates nginx and mtproxy+tls to disguise traffic, and uses a whitelist mode to deal with firewall detection.
 
-该镜像集成了nginx、mtproxy+tls 实现对流量的伪装，并采用**白名单**模式来应对防火墙的检测。
+该镜像集成了 nginx、mtproxy+tls 实现对流量的伪装，并采用**白名单**模式来应对防火墙的检测。
 
 If you use this Docker image, you don't need to use the script, you can choose one of the two, don't mix it up.
 
@@ -85,7 +85,7 @@ rm -rf /home/mtproxy
 
 ## 开机启动
 
-开机启动脚本，如果你的rc.local文件不存在请检查开机自启服务。
+开机启动脚本，如果你的 rc.local 文件不存在请检查开机自启服务。
 
 通过编辑文件`/etc/rc.local`将如下代码加入到开机自启脚本中：
 
