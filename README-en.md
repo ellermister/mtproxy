@@ -21,7 +21,7 @@ curl -s -o mtproxy.sh https://raw.githubusercontent.com/ellermister/mtproxy/mast
 
  ![mtproxy.sh](https://raw.githubusercontent.com/ellermister/mtproxy/master/mtproxy.jpg)
 
-## White-list MTProxy Docker Image
+## Whitelist MTProxy Docker Image
 
 The image integrates nginx and mtproxy+tls to disguise traffic, and uses a white-list mode to deal with firewall detection.
 
