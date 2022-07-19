@@ -6,7 +6,7 @@ MTProxyTLS one-click install script
 
 ## Discussion
 
-Telegram群组: https://t.me/EllerHK
+Telegram Group: https://t.me/EllerHK
 
 
 
