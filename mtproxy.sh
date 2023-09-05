@@ -183,7 +183,8 @@ install() {
 
     if [[ "$(uname -m)" != "x86_64" ]]; then
         if check_sys packageManager yum; then
-            yum install -y openssl-devel zlib-devel iproute wget
+            yum update -y
+            yum install -y openssl-devel zlib-devel iproute wget git
             yum groupinstall -y "Development Tools"
             if [ $xxd_status == 0 ]; then
                 yum install -y vim-common
@@ -196,15 +197,18 @@ install() {
             fi
         fi
     else
-        if check_sys packageManager yum && [ $xxd_status == 0 ]; then
-            yum install -y vim-common
-        elif check_sys packageManager apt && [ $xxd_status == 0 ]; then
+        if check_sys packageManager yum; then
+            yum update -y
+            yum install -y vim-common git
+            yum groupinstall "Development Tools"
+        elif check_sys packageManager apt; then
             apt-get -y update
-            apt install -y vim-common
+            apt install -y vim-common git
         fi
     fi
 
-    if [[ "$(uname -m)" != "x86_64" ]]; then
+    mtg_provider=$(get_mtg_provider)
+    if [[ "$mtg_provider" == "mtg" ]]; then
         build_mtproto
     else
         wget https://github.com/ellermister/mtproxy/releases/download/0.02/mtproto-proxy -O mtproto-proxy -q
