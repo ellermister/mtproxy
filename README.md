@@ -2,6 +2,8 @@
 
 MTProxyTLS 一键安装绿色脚本 [English](README-en.md)
 
+> 如果你反复遇到段错误或者其他未知问题, 建议更换为 Debian 9+ 以上的系统或采用 Docker 方式运行.
+
 
 
 ## 交流群组
