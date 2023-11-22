@@ -10,7 +10,7 @@ WORKDIR /home/mtproxy
 RUN set -ex \
     && cd $WORKDIR \
     && cp src/* /usr/share/nginx/html \
-    && cp mtp_config mtp_config.bak \
+    && cp mtp_config.example mtp_config.bak \
     && rm -rf .git \
     && cp mtproxy-entrypoint.sh /docker-entrypoint.d/40-mtproxy-start.sh \
     && chmod +x /docker-entrypoint.d/40-mtproxy-start.sh \

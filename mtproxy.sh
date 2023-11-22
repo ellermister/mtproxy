@@ -72,48 +72,37 @@ function get_cpu_core() {
     echo $(cat /proc/cpuinfo | grep "processor" | wc -l)
 }
 
-function get_architecture(){
+function get_architecture() {
     local architecture=""
     case $(uname -m) in
-        i386)   architecture="386" ;;
-        i686)   architecture="386" ;;
-        x86_64) architecture="amd64" ;;
-        arm|aarch64|aarch)    dpkg --print-architecture | grep -q "arm64" && architecture="arm64" || architecture="armv6l" ;;
-        *)  echo "Unsupported system architecture "$(uname -m) && exit 1 ;;
+    i386) architecture="386" ;;
+    i686) architecture="386" ;;
+    x86_64) architecture="amd64" ;;
+    arm | aarch64 | aarch) dpkg --print-architecture | grep -q "arm64" && architecture="arm64" || architecture="armv6l" ;;
+    *) echo "Unsupported system architecture "$(uname -m) && exit 1 ;;
     esac
     echo $architecture
 }
 
-function check_ps_not_install_to_install(){
-    if type ps >/dev/null 2>&1; then
-        return 1
-    else 
-        if check_sys packageManager yum; then
-            yum install -y procps-ng.x86_64
-        elif check_sys packageManager apt; then
-            apt-get -y update
-            apt install -y procps
-        fi
-        return 0
-    fi
-}
-
-function pid_exists() {
-    check_ps_not_install_to_install
-    local exists=$(ps aux | awk '{print $2}' | grep -w $1)
-    if [[ ! $exists ]]; then
-        return 0
-    else
-        return 1
-    fi
-}
-
+# function check_ps_not_install_to_install() {
+#     if type ps >/dev/null 2>&1; then
+#         return 1
+#     else
+#         if check_sys packageManager yum; then
+#             yum install -y procps-ng.x86_64
+#         elif check_sys packageManager apt; then
+#             apt-get -y update
+#             apt install -y procps
+#         fi
+#         return 0
+#     fi
+# }
 
 function build_mtproto() {
     cd $WORKDIR
     local platform=$(uname -m)
 
-    if [[ "$platform" == "x86_64" ]];then
+    if [[ "$platform" == "x86_64" ]]; then
         if [ ! -d 'MTProxy' ]; then
             git clone https://github.com/TelegramMessenger/MTProxy --depth=1
         fi
@@ -123,11 +112,11 @@ function build_mtproto() {
         cp -f $WORKDIR/MTProxy/objs/bin/mtproto-proxy $WORKDIR
         cd $WORKDIR
     else
-        if [[ -f "WORKDIR/mtg" ]];then
+        if [[ -f "WORKDIR/mtg" ]]; then
             return
         fi
 
-        # golang 
+        # golang
         local arch=$(get_architecture)
         rm -f golang.tar.gz
         #  https://go.dev/dl/go1.18.4.linux-amd64.tar.gz
@@ -137,7 +126,7 @@ function build_mtproto() {
         export PATH=$PATH:$WORKDIR/go/bin
 
         go version
-        if [[ $? != 0 ]];then
+        if [[ $? != 0 ]]; then
             local uname_m=$(uname -m)
             local architecture_origin=$(dpkg --print-architecture)
             echo -e "[\033[33mError\033[0m] golang download failed, please check!!! arch: $arch, platform: $platform,  uname: $uname_m, architecture_origin: $architecture_origin download url: $golang_url"
@@ -147,8 +136,8 @@ function build_mtproto() {
         rm -rf build-mtg
         git clone https://github.com/9seconds/mtg.git -b v1 build-mtg --depth=1
         cd build-mtg && make static
-        
-        if [[ ! -f "$WORKDIR/build-mtg/mtg" ]];then
+
+        if [[ ! -f "$WORKDIR/build-mtg/mtg" ]]; then
             echo -e "[\033[33mError\033[0m] Build fail for mtg, please check!!! $arch"
             exit 1
         fi
@@ -156,73 +145,141 @@ function build_mtproto() {
         cp -f $WORKDIR/build-mtg/mtg $WORKDIR && chmod +x $WORKDIR/mtg
 
         # clean
-        rm -rf $WORKDIR/build-mtg  $WORKDIR/golang.tar.gz  $WORKDIR/go
+        rm -rf $WORKDIR/build-mtg $WORKDIR/golang.tar.gz $WORKDIR/go
     fi
 }
 
-function get_mtg_provider(){
-    local arch=$(uname -m)
-    if [[ "$arch" == "x86_64" ]];then
+function get_mtg_provider() {
+    source ./mtp_config
+
+    if [ $provider -eq 1 ]; then
         echo "mtproto-proxy"
-    else
+    elif [ $provider -eq 2 ]; then
         echo "mtg"
+    else
+        echo "错误配置,请重新安装"
+        exit 1
     fi
 }
 
-install() {
+function is_installed() {
+    if [ ! -f "$WORKDIR/mtp_config" ]; then
+        return 1
+    fi
+    return 0
+}
+
+function is_running_mtp() {
+    if [ -f $pid_file ]; then
+
+        if is_pid_exists $(cat $pid_file); then
+            return 0
+        fi
+    fi
+    return 1
+}
+
+function is_supported_official_version() {
+    local arch=$(uname -m)
+    if [[ "$arch" == "x86_64" ]]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+function is_pid_exists() {
+    # check_ps_not_install_to_install
+    local exists=$(ps aux | awk '{print $2}' | grep -w $1)
+    if [[ ! $exists ]]; then
+        return 1
+    else
+        return 0
+    fi
+}
+
+do_install() {
     cd $WORKDIR
+
+    mtg_provider=$(get_mtg_provider)
+
+    if [[ "$mtg_provider" == "mtg" ]]; then
+        echo "todo..."
+        exit 1
+    else
+        wget https://github.com/ellermister/mtproxy/releases/download/0.03/mtproto-proxy -O mtproto-proxy -q
+        chmod +x mtproto-proxy
+    fi
+
     if [ ! -d "./pid" ]; then
         mkdir "./pid"
     fi
 
-    xxd_status=1
-    echo a | xxd -ps &>/dev/null
-    if [ $? != "0" ]; then
-        xxd_status=0
-    fi
+    # if [[ "$(uname -m)" != "x86_64" ]]; then
+    #     if check_sys packageManager yum; then
+    #         yum update -y
+    #         yum install -y openssl-devel zlib-devel iproute wget git
+    #         yum groupinstall -y "Development Tools"
+    #     elif check_sys packageManager apt; then
+    #         apt-get -y update
+    #         apt install -y git curl build-essential libssl-dev zlib1g-dev iproute2 wget
+    #     fi
+    # else
+    #     if check_sys packageManager yum; then
+    #         yum update -y
+    #         yum install -y vim-common git
+    #         yum groupinstall "Development Tools"
+    #     elif check_sys packageManager apt; then
+    #         apt-get -y update
+    #         apt install -y vim-common git
+    #     fi
+    # fi
 
-    if [[ "$(uname -m)" != "x86_64" ]]; then
-        if check_sys packageManager yum; then
-            yum update -y
-            yum install -y openssl-devel zlib-devel iproute wget git
-            yum groupinstall -y "Development Tools"
-            if [ $xxd_status == 0 ]; then
-                yum install -y vim-common
-            fi
-        elif check_sys packageManager apt; then
-            apt-get -y update
-            apt install -y git curl build-essential libssl-dev zlib1g-dev iproute2 wget
-            if [ $xxd_status == 0 ]; then
-                apt install -y vim-common
-            fi
-        fi
-    else
-        if check_sys packageManager yum; then
-            yum update -y
-            yum install -y vim-common git
-            yum groupinstall "Development Tools"
-        elif check_sys packageManager apt; then
-            apt-get -y update
-            apt install -y vim-common git
-        fi
-    fi
-
-    mtg_provider=$(get_mtg_provider)
-    if [[ "$mtg_provider" == "mtg" ]]; then
-        build_mtproto
-    else
-        wget https://github.com/ellermister/mtproxy/releases/download/0.02/mtproto-proxy -O mtproto-proxy -q
-        chmod +x mtproto-proxy
-    fi
 }
 
 print_line() {
     echo -e "========================================="
 }
 
-config_mtp() {
+do_install_basic_dep() {
+    if check_sys packageManager yum; then
+        yum install -y iproute curl wget procps-ng.x86_64
+    elif check_sys packageManager apt; then
+        apt install -y iproute2 curl wget procps
+    fi
+
+    return 0
+}
+
+do_config_mtp() {
     cd $WORKDIR
-    echo -e "检测到您的配置文件不存在, 为您指引生成!" && print_line
+
+    while true; do
+        default_provider=1
+        echo -e "请输入要安装的程序版本"
+        echo -e "1. Telegram 官方版本 (C语言, 存在一些问题, 只支持 x86_64)"
+        echo -e "2. 9seconds 第三方版本(兼容性强)"
+
+        if ! is_supported_official_version; then
+            echo -e "\n[\033[33m提醒\033[0m] 你的系统不支持官方版本\n"
+        fi
+
+        read -p "(默认版本: ${default_provider}):" input_provider
+        [ -z "${input_provider}" ] && input_provider=${default_provider}
+        expr ${input_provider} + 1 &>/dev/null
+        if [ $? -eq 0 ]; then
+            if [ ${input_provider} -ge 1 ] && [ ${input_provider} -le 2 ] && [ ${input_provider:0:1} != 0 ]; then
+                echo
+                echo "---------------------------"
+                echo "provider = ${input_provider}"
+                echo "---------------------------"
+                echo
+                break
+            fi
+        fi
+        echo -e "[\033[33m错误\033[0m] 请重新输入程序版本 [1-65535]\n"
+    done
+
     while true; do
         default_port=443
         echo -e "请输入一个客户端连接端口 [1-65535]"
@@ -282,7 +339,7 @@ config_mtp() {
 
     # config info
     public_ip=$(get_ip_public)
-    secret=$(head -c 16 /dev/urandom | xxd -ps)
+    secret=gen_rand_hex 32
 
     # proxy tag
     while true; do
@@ -305,8 +362,6 @@ config_mtp() {
         echo -e "[\033[33m错误\033[0m] TAG格式不正确!"
     done
 
-    curl -s https://core.telegram.org/getProxySecret -o proxy-secret
-    curl -s https://core.telegram.org/getProxyConfig -o proxy-multi.conf
     cat >./mtp_config <<EOF
 #!/bin/bash
 secret="${secret}"
@@ -314,26 +369,29 @@ port=${input_port}
 web_port=${input_manage_port}
 domain="${input_domain}"
 proxy_tag="${input_tag}"
+provider=${input_provider}
 EOF
     echo -e "配置已经生成完毕!"
 }
 
-status_mtp() {
-    if [ -f $pid_file ]; then
-        pid_exists $(cat $pid_file)
-        if [[ $? == 1 ]]; then
-            return 1
-        fi
-    fi
-    return 0
+function str_to_hex() {
+    string=$1
+    hex=$(printf "%s" "$string" | od -An -tx1 | tr -d ' \n')
+    echo $hex
+}
+
+function gen_rand_hex() {
+    local result=$(dd if=/dev/urandom bs=1 count=500 status=none | od -An -tx1 | tr -d ' \n')
+    echo "${result:0:$1}"
 }
 
 info_mtp() {
-    status_mtp
-    if [ $? == 1 ]; then
+    if is_running_mtp; then
         source ./mtp_config
         public_ip=$(get_ip_public)
-        domain_hex=$(xxd -pu <<<$domain | sed 's/0a//g')
+
+        domain_hex=$(str_to_hex $domain)
+
         client_secret="ee${secret}${domain_hex}"
         echo -e "TMProxy+TLS代理: \033[32m运行中\033[0m"
         echo -e "服务器IP：\033[31m$public_ip\033[0m"
@@ -348,14 +406,14 @@ info_mtp() {
 
 run_mtp() {
     cd $WORKDIR
-    status_mtp
-    if [ $? == 1 ]; then
+
+    if is_running_mtp; then
         echo -e "提醒：\033[33mMTProxy已经运行，请勿重复运行!\033[0m"
     else
         mtg_provider=$(get_mtg_provider)
         source ./mtp_config
-        if [[ "$mtg_provider" == "mtg" ]];then
-            domain_hex=$(xxd -pu <<<$domain | sed 's/0a//g')
+        if [[ "$mtg_provider" == "mtg" ]]; then
+            domain_hex=$(str_to_hex $domain)
             client_secret="ee${secret}${domain_hex}"
             # ./mtg simple-run -n 1.1.1.1 -t 30s -a 512kib 0.0.0.0:$port $client_secret >/dev/null 2>&1 &
             ./mtg run $client_secret $proxy_tag -b 0.0.0.0:$port --multiplex-per-connection 500 >/dev/null 2>&1 &
@@ -365,7 +423,7 @@ run_mtp() {
             workerman=$(get_cpu_core)
             tag_arg=""
             [[ -n "$proxy_tag" ]] && tag_arg="-P $proxy_tag"
-            ./mtproto-proxy -u nobody -p $web_port -H $port -S $secret --aes-pwd proxy-secret proxy-multi.conf -M $workerman $tag_arg --domain $domain $nat_info >/dev/null 2>&1 &    
+            ./mtproto-proxy -u nobody -p $web_port -H $port -S $secret --aes-pwd proxy-secret proxy-multi.conf -M $workerman $tag_arg --domain $domain $nat_info >/dev/null 2>&1 &
         fi
 
         echo $! >$pid_file
@@ -383,8 +441,8 @@ debug_mtp() {
     [[ -n "$proxy_tag" ]] && tag_arg="-P $proxy_tag"
     echo "当前正在运行调试模式："
     echo -e "\t你随时可以通过 Ctrl+C 进行取消操作"
-    if [[ "$mtg_provider" == "mtg" ]];then
-        domain_hex=$(xxd -pu <<<$domain | sed 's/0a//g')
+    if [[ "$mtg_provider" == "mtg" ]]; then
+        domain_hex=$(str_to_hex $domain)
         client_secret="ee${secret}${domain_hex}"
         #echo " ./mtg simple-run -n 1.1.1.1 -t 30s -a 512kib 0.0.0.0:$port $client_secret"
         #./mtg simple-run -n 1.1.1.1 -t 30s -a 512kib 0.0.0.0:$port $client_secret
@@ -394,65 +452,20 @@ debug_mtp() {
         echo " ./mtproto-proxy -u nobody -p $web_port -H $port -S $secret --aes-pwd proxy-secret proxy-multi.conf -M $workerman $tag_arg --domain $domain $nat_info"
         ./mtproto-proxy -u nobody -p $web_port -H $port -S $secret --aes-pwd proxy-secret proxy-multi.conf -M $workerman $tag_arg --domain $domain $nat_info
     fi
-    
+
 }
 
 stop_mtp() {
     local pid=$(cat $pid_file)
     kill -9 $pid
-    pid_exists $pid
-    if [[ $pid == 1 ]]; then
+
+    if is_pid_exists $pid; then
         echo "停止任务失败"
     fi
 }
 
-fix_mtp() {
-    if [ $(id -u) != 0 ]; then
-        echo -e "> ※ (该功能仅限 root 用户执行)"
-        exit 1
-    fi
-
-    print_line
-    echo -e "> 开始清空防火墙规则/停止防火墙/卸载防火墙..."
-    print_line
-
-    if check_sys packageManager yum; then
-        systemctl stop firewalld.service
-        systemctl disable firewalld.service
-        systemctl stop iptables
-        systemctl disable iptables
-        service stop iptables
-        yum remove -y iptables
-        yum remove -y firewalld
-    elif check_sys packageManager apt; then
-        iptables -F
-        iptables -t nat -F
-        iptables -P ACCEPT
-        iptables -t nat -P ACCEPT
-        service stop iptables
-        apt-get remove -y iptables
-        ufw disable
-    fi
-
-    print_line
-    echo -e "> 开始安装/更新iproute2..."
-    print_line
-
-    if check_sys packageManager yum; then
-        yum install -y epel-release
-        yum update -y
-        yum install -y iproute
-    elif check_sys packageManager apt; then
-        apt-get install -y epel-release
-        apt-get update -y
-        apt-get install -y iproute2
-    fi
-
-    echo -e "< 处理完毕，如有报错忽略即可..."
-    echo -e "< 如遇到端口冲突，请自行关闭相关程序"
-}
-
 param=$1
+
 if [[ "start" == $param ]]; then
     echo "即将：启动脚本"
     run_mtp
@@ -465,19 +478,20 @@ elif [[ "debug" == $param ]]; then
 elif [[ "restart" == $param ]]; then
     stop_mtp
     run_mtp
-elif [[ "fix" == $param ]]; then
-    fix_mtp
 elif [[ "build" == $param ]]; then
     build_mtproto
 else
-    if [ ! -f "$WORKDIR/mtp_config" ] && [ ! -f "$WORKDIR/mtproto-proxy" ]; then
+    if ! is_installed; then
         echo "MTProxyTLS一键安装运行绿色脚本"
         print_line
-        install
-        config_mtp
+        echo -e "检测到您的配置文件不存在, 为您指引生成!" && print_line
+
+        do_install_basic_dep
+        do_config_mtp
+        do_install
         run_mtp
     else
-        [ ! -f "$WORKDIR/mtp_config" ] && config_mtp
+        [ ! -f "$WORKDIR/mtp_config" ] && do_config_mtp
         echo "MTProxyTLS一键安装运行绿色脚本"
         print_line
         info_mtp
@@ -490,6 +504,5 @@ else
         echo -e "\t调试运行 bash $0 debug"
         echo -e "\t停止服务 bash $0 stop"
         echo -e "\t重启服务 bash $0 restart"
-        echo -e "\t修复常见问题 bash $0 fix"
     fi
 fi
