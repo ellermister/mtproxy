@@ -1,4 +1,6 @@
-FROM --platform=$TARGETPLATFORM nginx AS build
+FROM --platform=$TARGETPLATFORM nginx:1.23.2 AS build
+#FROM  nginx:1.23.2 AS build
+
 
 COPY . /home/mtproxy
 
@@ -10,7 +12,6 @@ WORKDIR /home/mtproxy
 RUN set -ex \
     && cd $WORKDIR \
     && cp src/* /usr/share/nginx/html \
-    && cp mtp_config mtp_config.bak \
     && rm -rf .git \
     && cp mtproxy-entrypoint.sh /docker-entrypoint.d/40-mtproxy-start.sh \
     && chmod +x /docker-entrypoint.d/40-mtproxy-start.sh \

@@ -4,8 +4,15 @@ set -e
 chmod 777 /etc/nginx/ip_white.conf
 chmod 777 /run/php/php7.4-fpm.sock
 
+
+default_config="/home/mtproxy/mtp_config.example"
 mtp_config="/home/mtproxy/mtp_config"
-init_lock="/home/mtproxy/mtp_config.lock"
+
+function gen_rand_hex() {
+    local result=$(dd if=/dev/urandom bs=1 count=500 status=none | od -An -tx1 | tr -d ' \n')
+    echo "${result:0:$1}"
+}
+
 
 set_config(){
 	if [ "$secret" ] && [[ "$secret" =~ ^[A-Za-z0-9]{32}$ ]]; then
@@ -19,11 +26,11 @@ set_config(){
 	fi
 }
 
-if [ ! -f $init_lock ];then
-	cp "${mtp_config}.bak" "$mtp_config"
-		echo 1>"$init_lock"
+if [ ! -f $mtp_config ];then
+	cp "${default_config}" "$mtp_config"
+
 	if [ ! "$secret" ]; then
-		secret=$(head -c 16 /dev/urandom | xxd -ps)
+		secret=$(gen_rand_hex 32)
 	fi
 
 	if [ ! "$ip_white_list" ]; then
