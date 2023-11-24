@@ -84,41 +84,36 @@ function get_architecture() {
     echo $architecture
 }
 
-# function check_ps_not_install_to_install() {
-#     if type ps >/dev/null 2>&1; then
-#         return 1
-#     else
-#         if check_sys packageManager yum; then
-#             yum install -y procps-ng.x86_64
-#         elif check_sys packageManager apt; then
-#             apt-get -y update
-#             apt install -y procps
-#         fi
-#         return 0
-#     fi
-# }
-
 function build_mtproto() {
     cd $WORKDIR
-    local platform=$(uname -m)
 
-    if [[ "$platform" == "x86_64" ]]; then
-        if [ ! -d 'MTProxy' ]; then
-            git clone https://github.com/TelegramMessenger/MTProxy --depth=1
+    local platform=$(uname -m)
+    if [[ -z "$1" ]]; then
+        echo "缺少参数"
+        exit 1
+    fi
+
+    do_install_build_dep
+
+    if [[ "1" == "$1" ]]; then
+         if [ -d 'MTProxy' ]; then
+            rm -rf 'MTProxy'
         fi
-        cd MTProxy
-        sed -i 's/CFLAGS\s*=[^\r]\+/& -fcommon\r/' Makefile
-        make && cd objs/bin
+
+        git clone https://github.com/ellermister/MTProxyC --depth=1 MTProxy
+        cd MTProxy && make && cd objs/bin
         cp -f $WORKDIR/MTProxy/objs/bin/mtproto-proxy $WORKDIR
         cd $WORKDIR
-    else
-        if [[ -f "WORKDIR/mtg" ]]; then
-            return
-        fi
 
+        chmod +x mtproto-proxy
+
+        # clean
+        rm -rf 'MTProxy'
+
+    elif [[ "2" == "$1" ]]; then
         # golang
         local arch=$(get_architecture)
-        rm -f golang.tar.gz
+
         #  https://go.dev/dl/go1.18.4.linux-amd64.tar.gz
         local golang_url="https://go.dev/dl/go1.18.4.linux-$arch.tar.gz"
         wget $golang_url -O golang.tar.gz
@@ -147,6 +142,7 @@ function build_mtproto() {
         # clean
         rm -rf $WORKDIR/build-mtg $WORKDIR/golang.tar.gz $WORKDIR/go
     fi
+
 }
 
 function get_mtg_provider() {
@@ -204,8 +200,12 @@ do_install() {
     mtg_provider=$(get_mtg_provider)
 
     if [[ "$mtg_provider" == "mtg" ]]; then
-        echo "todo..."
-        exit 1
+        local arch=$(get_architecture)
+        local mtg_url=https://github.com/9seconds/mtg/releases/download/v1.0.12/mtg-1.0.12-linux-amd64.tar.gz
+        wget $mtg_url -O mtg.tar.gz
+        tar -xzvf mtg.tar.gz mtg-1.0.12-linux-amd64/mtg --strip-components 1
+
+        [[ -f "./mtg" ]] && ./mtg && echo "Installed for mtg"
     else
         wget https://github.com/ellermister/mtproxy/releases/download/0.03/mtproto-proxy -O mtproto-proxy -q
         chmod +x mtproto-proxy
@@ -214,26 +214,6 @@ do_install() {
     if [ ! -d "./pid" ]; then
         mkdir "./pid"
     fi
-
-    # if [[ "$(uname -m)" != "x86_64" ]]; then
-    #     if check_sys packageManager yum; then
-    #         yum update -y
-    #         yum install -y openssl-devel zlib-devel iproute wget git
-    #         yum groupinstall -y "Development Tools"
-    #     elif check_sys packageManager apt; then
-    #         apt-get -y update
-    #         apt install -y git curl build-essential libssl-dev zlib1g-dev iproute2 wget
-    #     fi
-    # else
-    #     if check_sys packageManager yum; then
-    #         yum update -y
-    #         yum install -y vim-common git
-    #         yum groupinstall "Development Tools"
-    #     elif check_sys packageManager apt; then
-    #         apt-get -y update
-    #         apt install -y vim-common git
-    #     fi
-    # fi
 
 }
 
@@ -248,6 +228,16 @@ do_install_basic_dep() {
         apt install -y iproute2 curl wget procps
     fi
 
+    return 0
+}
+
+do_install_build_dep() {
+    if check_sys packageManager yum; then
+        yum install -y git  openssl-devel zlib-devel
+        yum groupinstall -y "Development Tools"
+    elif check_sys packageManager apt; then
+        apt install -y git curl  build-essential libssl-dev zlib1g-dev
+    fi
     return 0
 }
 
@@ -339,7 +329,7 @@ do_config_mtp() {
 
     # config info
     public_ip=$(get_ip_public)
-    secret=gen_rand_hex 32
+    secret=$(gen_rand_hex 32)
 
     # proxy tag
     while true; do
@@ -416,6 +406,7 @@ run_mtp() {
             domain_hex=$(str_to_hex $domain)
             client_secret="ee${secret}${domain_hex}"
             # ./mtg simple-run -n 1.1.1.1 -t 30s -a 512kib 0.0.0.0:$port $client_secret >/dev/null 2>&1 &
+            [[ -f "./mtg" ]] || (echo -e "提醒：\033[33m MTProxy 代理程序不存在请重新安装! \033[0m" && exit 1)
             ./mtg run $client_secret $proxy_tag -b 0.0.0.0:$port --multiplex-per-connection 500 >/dev/null 2>&1 &
         else
             curl -s https://core.telegram.org/getProxyConfig -o proxy-multi.conf
@@ -435,6 +426,9 @@ run_mtp() {
 debug_mtp() {
     cd $WORKDIR
     source ./mtp_config
+
+    mtg_provider=$(get_mtg_provider)
+
     nat_info=$(get_nat_ip_param)
     workerman=$(get_cpu_core)
     tag_arg=""
@@ -444,6 +438,9 @@ debug_mtp() {
     if [[ "$mtg_provider" == "mtg" ]]; then
         domain_hex=$(str_to_hex $domain)
         client_secret="ee${secret}${domain_hex}"
+
+        echo "domain_hex = $domain_hex"
+        echo "secret = $secret"
         #echo " ./mtg simple-run -n 1.1.1.1 -t 30s -a 512kib 0.0.0.0:$port $client_secret"
         #./mtg simple-run -n 1.1.1.1 -t 30s -a 512kib 0.0.0.0:$port $client_secret
         echo " ./mtg run $client_secret $proxy_tag -b 0.0.0.0:$port --multiplex-per-connection 500"
@@ -464,6 +461,34 @@ stop_mtp() {
     fi
 }
 
+reinstall_mtp() {
+    cd $WORKDIR
+    if [ -f "./mtp_config" ]; then
+        while true; do
+            default_keep_config="y"
+            echo -e "是否保留配置文件? "
+            read -p "y: 保留 , n: 不保留 (默认: ${default_keep_config}):" input_keep_config
+            [ -z "${input_keep_config}" ] && input_keep_config=${default_keep_config}
+            echo "debug = ${input_keep_config}"
+            if [[ "$input_keep_config" == "y" ]] || [[ "$input_keep_config" == "n" ]]; then
+                if [[ "$input_keep_config" == "n" ]]; then
+                    rm -f mtp_config
+                fi
+                break
+            fi
+            echo -e "[\033[33m错误\033[0m] 输入错误， 请输入 y / n"
+        done
+    fi
+
+    if [ ! -f "./mtp_config" ]; then 
+        do_install_basic_dep
+        do_config_mtp
+    fi
+
+    do_install
+    run_mtp
+}
+
 param=$1
 
 if [[ "start" == $param ]]; then
@@ -478,8 +503,11 @@ elif [[ "debug" == $param ]]; then
 elif [[ "restart" == $param ]]; then
     stop_mtp
     run_mtp
+    debug_mtp
+elif [[ "reinstall" == $param ]]; then
+    reinstall_mtp
 elif [[ "build" == $param ]]; then
-    build_mtproto
+    build_mtproto $2
 else
     if ! is_installed; then
         echo "MTProxyTLS一键安装运行绿色脚本"
@@ -500,9 +528,10 @@ else
         echo -e "配置文件: $WORKDIR/mtp_config"
         echo -e "卸载方式：直接删除当前目录下文件即可"
         echo "使用方式:"
-        echo -e "\t启动服务 bash $0 start"
-        echo -e "\t调试运行 bash $0 debug"
-        echo -e "\t停止服务 bash $0 stop"
-        echo -e "\t重启服务 bash $0 restart"
+        echo -e "\t启动服务\t bash $0 start"
+        echo -e "\t调试运行\t bash $0 debug"
+        echo -e "\t停止服务\t bash $0 stop"
+        echo -e "\t重启服务\t bash $0 restart"
+        echo -e "\t重新安装代理程序 bash $0 reinstall"
     fi
 fi
