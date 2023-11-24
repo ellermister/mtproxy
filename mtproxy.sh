@@ -105,6 +105,12 @@ function build_mtproto() {
 
         git clone https://github.com/ellermister/MTProxyC --depth=1 MTProxy
         cd MTProxy && make && cd objs/bin &&  chmod +x mtproto-proxy
+
+        if [ ! -f "./mtproto-proxy" ]; then
+            echo "mtproto-proxy 编译失败"
+            exit 1
+        fi
+
         cp -f mtproto-proxy $WORKDIR
         
 
