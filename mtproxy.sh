@@ -95,17 +95,18 @@ function build_mtproto() {
 
     do_install_build_dep
 
+    rm -rf build
+    mkdir build && cd build
+
     if [[ "1" == "$1" ]]; then
          if [ -d 'MTProxy' ]; then
             rm -rf 'MTProxy'
         fi
 
         git clone https://github.com/ellermister/MTProxyC --depth=1 MTProxy
-        cd MTProxy && make && cd objs/bin
-        cp -f $WORKDIR/MTProxy/objs/bin/mtproto-proxy $WORKDIR
-        cd $WORKDIR
-
-        chmod +x mtproto-proxy
+        cd MTProxy && make && cd objs/bin &&  chmod +x mtproto-proxy
+        cp -f mtproto-proxy $WORKDIR
+        
 
         # clean
         rm -rf 'MTProxy'
@@ -117,8 +118,8 @@ function build_mtproto() {
         #  https://go.dev/dl/go1.18.4.linux-amd64.tar.gz
         local golang_url="https://go.dev/dl/go1.18.4.linux-$arch.tar.gz"
         wget $golang_url -O golang.tar.gz
-        rm -rf $WORKDIR/go && tar -C $WORKDIR -xzf golang.tar.gz
-        export PATH=$PATH:$WORKDIR/go/bin
+        rm -rf go && tar -C . -xzf golang.tar.gz
+        export PATH=$PATH:$(pwd)/go/bin
 
         go version
         if [[ $? != 0 ]]; then
@@ -132,16 +133,17 @@ function build_mtproto() {
         git clone https://github.com/9seconds/mtg.git -b v1 build-mtg --depth=1
         cd build-mtg && make static
 
-        if [[ ! -f "$WORKDIR/build-mtg/mtg" ]]; then
+        if [[ ! -f "./mtg" ]]; then
             echo -e "[\033[33mError\033[0m] Build fail for mtg, please check!!! $arch"
             exit 1
         fi
 
-        cp -f $WORKDIR/build-mtg/mtg $WORKDIR && chmod +x $WORKDIR/mtg
-
-        # clean
-        rm -rf $WORKDIR/build-mtg $WORKDIR/golang.tar.gz $WORKDIR/go
+        cp -f mtg $WORKDIR && chmod +x $WORKDIR/mtg
     fi
+
+    # clean
+    cd $WORKDIR
+    rm -rf build
 
 }
 
