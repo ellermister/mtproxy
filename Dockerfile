@@ -1,4 +1,4 @@
-FROM --platform=$TARGETPLATFORM nginx AS build
+FROM --platform=$TARGETPLATFORM nginx:1.23.2 AS build
 #FROM  nginx:1.23.2 AS build
 
 
