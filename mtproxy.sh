@@ -158,7 +158,7 @@ function get_mtg_provider() {
 
     local arch=$(get_architecture)
     if [[ "$arch" != "amd64" && $provider -eq 1 ]]; then
-      $provider=2
+      provider=2
     fi
 
     if [ $provider -eq 1 ]; then
