@@ -1,5 +1,5 @@
-#FROM --platform=$TARGETPLATFORM nginx AS build
-FROM  nginx:1.23.2 AS build
+FROM --platform=$TARGETPLATFORM nginx AS build
+#FROM  nginx:1.23.2 AS build
 
 
 COPY . /home/mtproxy
