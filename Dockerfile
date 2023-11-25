@@ -23,8 +23,7 @@ RUN set -ex \
 RUN set -ex \
     && apt-get update \
     && apt-get install -y --no-install-recommends git wget curl build-essential libssl-dev zlib1g-dev iproute2 php7.4-fpm vim-common \
-    && bash mtproxy.sh build 1 \
-    && bash mtproxy.sh build 2 \
+    && bash mtproxy.sh build \
     && sed -i 's/^user\s*=[^\r]\+/user = root/' /etc/php/7.4/fpm/pool.d/www.conf \
     && sed -i 's/^group\s*=[^\r]\+/group = root/' /etc/php/7.4/fpm/pool.d/www.conf \
     && rm -rf $WORKDIR/MTProxy \

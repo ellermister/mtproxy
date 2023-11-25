@@ -156,6 +156,11 @@ function build_mtproto() {
 function get_mtg_provider() {
     source ./mtp_config
 
+    local arch=$(get_architecture)
+    if [[ "$arch" != "amd64" && $provider -eq 1 ]]; then
+      $provider=2
+    fi
+
     if [ $provider -eq 1 ]; then
         echo "mtproto-proxy"
     elif [ $provider -eq 2 ]; then
@@ -515,7 +520,12 @@ elif [[ "restart" == $param ]]; then
 elif [[ "reinstall" == $param ]]; then
     reinstall_mtp
 elif [[ "build" == $param ]]; then
-    build_mtproto $2
+    arch=$(get_architecture)
+    if [[ "$arch" == "amd64" ]]; then
+        build_mtproto 1
+    fi
+    
+     build_mtproto 2
 else
     if ! is_installed; then
         echo "MTProxyTLS一键安装运行绿色脚本"
