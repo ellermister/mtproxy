@@ -136,8 +136,8 @@ function build_mtproto() {
         fi
 
         rm -rf build-mtg
-        git clone https://github.com/9seconds/mtg.git -b v1 build-mtg --depth=1
-        cd build-mtg && make static
+        git clone https://github.com/9seconds/mtg.git -b v1 build-mtg
+        cd build-mtg && git reset --hard 9d67414db633dded5f11d549eb80617dc6abb2c3  && make static
 
         if [[ ! -f "./mtg" ]]; then
             echo -e "[\033[33mError\033[0m] Build fail for mtg, please check!!! $arch"
@@ -158,7 +158,7 @@ function get_mtg_provider() {
 
     local arch=$(get_architecture)
     if [[ "$arch" != "amd64" && $provider -eq 1 ]]; then
-      provider=2
+        provider=2
     fi
 
     if [ $provider -eq 1 ]; then
