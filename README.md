@@ -62,7 +62,7 @@ docker run -d \
 -e domain="cloudflare.com" \
 -p 8080:80 \
 -p 8443:443 \
-ellermister/mtproxy:master
+ellermister/mtproxy
  ```
 **镜像默认开启了 IP 段白名单**，如果你不需要可以配置 `ip_white_list="OFF"` 取消：
 
@@ -75,7 +75,7 @@ docker run -d \
 -e ip_white_list="OFF" \
 -p 8080:80 \
 -p 8443:443 \
-ellermister/mtproxy:master
+ellermister/mtproxy
 ```
 
 `ip_white_list` 选项:
