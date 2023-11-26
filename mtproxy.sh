@@ -423,6 +423,7 @@ run_mtp() {
             ./mtg run $client_secret $proxy_tag -b 0.0.0.0:$port --multiplex-per-connection 500 >/dev/null 2>&1 &
         else
             curl -s https://core.telegram.org/getProxyConfig -o proxy-multi.conf
+            curl -s https://core.telegram.org/getProxySecret -o proxy-secret
             nat_info=$(get_nat_ip_param)
             workerman=$(get_cpu_core)
             tag_arg=""
