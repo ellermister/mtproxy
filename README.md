@@ -30,7 +30,7 @@ Telegram 群组：https://t.me/EllerHK
 
 ```bash
 rm -rf /home/mtproxy && mkdir /home/mtproxy && cd /home/mtproxy
-curl -s -o mtproxy.sh https://github.com/ellermister/mtproxy/raw/master/mtproxy.sh
+curl -sL -o mtproxy.sh https://github.com/ellermister/mtproxy/raw/master/mtproxy.sh
 bash mtproxy.sh
 ```
 
