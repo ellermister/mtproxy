@@ -58,6 +58,15 @@ function get_ip_private() {
     echo $(ip a | grep inet | grep -v 127.0.0.1 | grep -v inet6 | awk '{print $2}' | cut -d "/" -f1 | awk 'NR==1 {print $1}')
 }
 
+function get_local_ip(){
+  ip a | grep inet | grep 127.0.0.1 > /dev/null 2>&1
+  if [[ $? -eq 1 ]];then
+    echo $(get_ip_private)
+  else
+    echo "127.0.0.1"
+  fi
+}
+
 function get_nat_ip_param() {
     nat_ip=$(get_ip_private)
     public_ip=$(get_ip_public)
@@ -407,29 +416,38 @@ info_mtp() {
     fi
 }
 
+function get_run_command(){
+  cd $WORKDIR
+  mtg_provider=$(get_mtg_provider)
+  source ./mtp_config
+  if [[ "$mtg_provider" == "mtg" ]]; then
+      domain_hex=$(str_to_hex $domain)
+      client_secret="ee${secret}${domain_hex}"
+      local local_ip=$(get_local_ip)
+
+      # ./mtg simple-run -n 1.1.1.1 -t 30s -a 512kib 0.0.0.0:$port $client_secret >/dev/null 2>&1 &
+      [[ -f "./mtg" ]] || (echo -e "提醒：\033[33m MTProxy 代理程序不存在请重新安装! \033[0m" && exit 1)
+      echo "./mtg run $client_secret $proxy_tag -b 0.0.0.0:$port --multiplex-per-connection 500 --prefer-ip=ipv6 -t $local_ip:3129"
+  else
+      curl -s https://core.telegram.org/getProxyConfig -o proxy-multi.conf
+      curl -s https://core.telegram.org/getProxySecret -o proxy-secret
+      nat_info=$(get_nat_ip_param)
+      workerman=$(get_cpu_core)
+      tag_arg=""
+      [[ -n "$proxy_tag" ]] && tag_arg="-P $proxy_tag"
+      echo "./mtproto-proxy -u nobody -p $web_port -H $port -S $secret --aes-pwd proxy-secret proxy-multi.conf -M $workerman $tag_arg --domain $domain $nat_info --ipv6"
+  fi
+}
+
 run_mtp() {
     cd $WORKDIR
 
     if is_running_mtp; then
         echo -e "提醒：\033[33mMTProxy已经运行，请勿重复运行!\033[0m"
     else
-        mtg_provider=$(get_mtg_provider)
-        source ./mtp_config
-        if [[ "$mtg_provider" == "mtg" ]]; then
-            domain_hex=$(str_to_hex $domain)
-            client_secret="ee${secret}${domain_hex}"
-            # ./mtg simple-run -n 1.1.1.1 -t 30s -a 512kib 0.0.0.0:$port $client_secret >/dev/null 2>&1 &
-            [[ -f "./mtg" ]] || (echo -e "提醒：\033[33m MTProxy 代理程序不存在请重新安装! \033[0m" && exit 1)
-            ./mtg run $client_secret $proxy_tag -b 0.0.0.0:$port --multiplex-per-connection 500 --prefer-ip=ipv6 >/dev/null 2>&1 &
-        else
-            curl -s https://core.telegram.org/getProxyConfig -o proxy-multi.conf
-            curl -s https://core.telegram.org/getProxySecret -o proxy-secret
-            nat_info=$(get_nat_ip_param)
-            workerman=$(get_cpu_core)
-            tag_arg=""
-            [[ -n "$proxy_tag" ]] && tag_arg="-P $proxy_tag"
-            ./mtproto-proxy -u nobody -p $web_port -H $port -S $secret --aes-pwd proxy-secret proxy-multi.conf -M $workerman $tag_arg --domain $domain $nat_info --ipv6 >/dev/null 2>&1 &
-        fi
+        local command=$(get_run_command)
+        echo $command
+        $command >/dev/null 2>&1 &
 
         echo $! >$pid_file
         sleep 2
@@ -439,30 +457,13 @@ run_mtp() {
 
 debug_mtp() {
     cd $WORKDIR
-    source ./mtp_config
 
-    mtg_provider=$(get_mtg_provider)
-
-    nat_info=$(get_nat_ip_param)
-    workerman=$(get_cpu_core)
-    tag_arg=""
-    [[ -n "$proxy_tag" ]] && tag_arg="-P $proxy_tag"
     echo "当前正在运行调试模式："
     echo -e "\t你随时可以通过 Ctrl+C 进行取消操作"
-    if [[ "$mtg_provider" == "mtg" ]]; then
-        domain_hex=$(str_to_hex $domain)
-        client_secret="ee${secret}${domain_hex}"
 
-        echo "domain_hex = $domain_hex"
-        echo "secret = $secret"
-        #echo " ./mtg simple-run -n 1.1.1.1 -t 30s -a 512kib 0.0.0.0:$port $client_secret"
-        #./mtg simple-run -n 1.1.1.1 -t 30s -a 512kib 0.0.0.0:$port $client_secret
-        echo " ./mtg run $client_secret $proxy_tag -b 0.0.0.0:$port --multiplex-per-connection 500"
-        ./mtg run $client_secret $proxy_tag -b 0.0.0.0:$port --multiplex-per-connection 500
-    else
-        echo " ./mtproto-proxy -u nobody -p $web_port -H $port -S $secret --aes-pwd proxy-secret proxy-multi.conf -M $workerman $tag_arg --domain $domain $nat_info"
-        ./mtproto-proxy -u nobody -p $web_port -H $port -S $secret --aes-pwd proxy-secret proxy-multi.conf -M $workerman $tag_arg --domain $domain $nat_info
-    fi
+    local command=$(get_run_command)
+    echo $command
+    $command
 
 }
 
