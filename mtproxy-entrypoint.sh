@@ -22,10 +22,10 @@ set_config(){
 		sed -i 's/proxy_tag="[0-9A-Za-z]*"/proxy_tag="'$tag'"/' $mtp_config
 	fi
 	if [ "$domain" ]; then
-		sed -i 's/domain="[A-z\.\-0-9]*"/domain="'$domain'"/' $mtp_config
+		sed -i 's/domain="[0-9A-z\.\-]*"/domain="'$domain'"/' $mtp_config
 	fi
 	if [ "$provider" ] && [[ "$provider" =~ ^[1-2]$ ]]; then
-		sed -i 's/provider=[0-9]\+/provider='$provider'/' $mtp_config
+		sed -i 's/provider=[0-9]\+/cat /='$provider'/' $mtp_config
 	fi
 }
 
