@@ -420,7 +420,7 @@ run_mtp() {
             client_secret="ee${secret}${domain_hex}"
             # ./mtg simple-run -n 1.1.1.1 -t 30s -a 512kib 0.0.0.0:$port $client_secret >/dev/null 2>&1 &
             [[ -f "./mtg" ]] || (echo -e "提醒：\033[33m MTProxy 代理程序不存在请重新安装! \033[0m" && exit 1)
-            ./mtg run $client_secret $proxy_tag -b 0.0.0.0:$port --multiplex-per-connection 500 >/dev/null 2>&1 &
+            ./mtg run $client_secret $proxy_tag -b 0.0.0.0:$port --multiplex-per-connection 500 --prefer-ip=ipv6 >/dev/null 2>&1 &
         else
             curl -s https://core.telegram.org/getProxyConfig -o proxy-multi.conf
             curl -s https://core.telegram.org/getProxySecret -o proxy-secret
@@ -428,7 +428,7 @@ run_mtp() {
             workerman=$(get_cpu_core)
             tag_arg=""
             [[ -n "$proxy_tag" ]] && tag_arg="-P $proxy_tag"
-            ./mtproto-proxy -u nobody -p $web_port -H $port -S $secret --aes-pwd proxy-secret proxy-multi.conf -M $workerman $tag_arg --domain $domain $nat_info >/dev/null 2>&1 &
+            ./mtproto-proxy -u nobody -p $web_port -H $port -S $secret --aes-pwd proxy-secret proxy-multi.conf -M $workerman $tag_arg --domain $domain $nat_info --ipv6 >/dev/null 2>&1 &
         fi
 
         echo $! >$pid_file

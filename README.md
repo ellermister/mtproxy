@@ -30,7 +30,7 @@ Telegram 群组：https://t.me/EllerHK
 
 ```bash
 rm -rf /home/mtproxy && mkdir /home/mtproxy && cd /home/mtproxy
-curl -sL -o mtproxy.sh https://github.com/ellermister/mtproxy/raw/master/mtproxy.sh
+curl -fsSL -o mtproxy.sh https://github.com/ellermister/mtproxy/raw/master/mtproxy.sh
 bash mtproxy.sh
 ```
 
@@ -62,7 +62,7 @@ docker run -d \
 -e domain="cloudflare.com" \
 -p 8080:80 \
 -p 8443:443 \
-ellermister/mtproxy
+ellermister/mtproxy:master
  ```
 **镜像默认开启了 IP 段白名单**，如果你不需要可以配置 `ip_white_list="OFF"` 取消：
 
@@ -75,7 +75,7 @@ docker run -d \
 -e ip_white_list="OFF" \
 -p 8080:80 \
 -p 8443:443 \
-ellermister/mtproxy
+ellermister/mtproxy:master
 ```
 
 `ip_white_list` 选项:
