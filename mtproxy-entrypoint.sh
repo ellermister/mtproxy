@@ -22,13 +22,17 @@ set_config(){
 		sed -i 's/proxy_tag="[0-9A-Za-z]*"/proxy_tag="'$tag'"/' $mtp_config
 	fi
 	if [ "$domain" ]; then
-		sed -i 's/domain="[A-z\.\-\d]*"/domain="'$domain'"/' $mtp_config
+		sed -i 's/domain="[A-z\.\-0-9]*"/domain="'$domain'"/' $mtp_config
+	fi
+	if [ "$provider" ] && [[ "$provider" =~ ^[1-2]$ ]]; then
+		sed -i 's/provider=[0-9]\+/provider='$provider'/' $mtp_config
 	fi
 }
 
 if [ ! -f $mtp_config ];then
 	cp "${default_config}" "$mtp_config"
 
+  # if params is empty, then generate random values
 	if [ ! "$secret" ]; then
 		secret=$(gen_rand_hex 32)
 	fi
@@ -42,7 +46,6 @@ if [ ! -f $mtp_config ];then
 	fi
 
 	echo $ip_white_list > /var/ip_white_list
-	set_config
 fi;
 
 set_config
@@ -50,6 +53,4 @@ echo "=================================================="
 echo -e "Default port is \033[31m443\033[0m by docker started mtproxy!!!"
 echo "=================================================="
 cd /home/mtproxy
-curl -s https://core.telegram.org/getProxySecret -o proxy-secret
-curl -s https://core.telegram.org/getProxyConfig -o proxy-multi.conf
 bash /home/mtproxy/mtproxy.sh start
