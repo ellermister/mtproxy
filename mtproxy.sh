@@ -214,9 +214,9 @@ do_install() {
 
     if [[ "$mtg_provider" == "mtg" ]]; then
         local arch=$(get_architecture)
-        local mtg_url=https://github.com/9seconds/mtg/releases/download/v1.0.12/mtg-1.0.12-linux-amd64.tar.gz
+        local mtg_url=https://github.com/9seconds/mtg/releases/download/v1.0.11/mtg-1.0.11-linux-amd64.tar.gz
         wget $mtg_url -O mtg.tar.gz
-        tar -xzvf mtg.tar.gz mtg-1.0.12-linux-amd64/mtg --strip-components 1
+        tar -xzvf mtg.tar.gz mtg-1.0.11-linux-amd64/mtg --strip-components 1
 
         [[ -f "./mtg" ]] && ./mtg && echo "Installed for mtg"
     else
@@ -482,7 +482,7 @@ reinstall_mtp() {
             echo -e "是否保留配置文件? "
             read -p "y: 保留 , n: 不保留 (默认: ${default_keep_config}):" input_keep_config
             [ -z "${input_keep_config}" ] && input_keep_config=${default_keep_config}
-            echo "debug = ${input_keep_config}"
+
             if [[ "$input_keep_config" == "y" ]] || [[ "$input_keep_config" == "n" ]]; then
                 if [[ "$input_keep_config" == "n" ]]; then
                     rm -f mtp_config
