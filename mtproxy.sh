@@ -130,8 +130,8 @@ function build_mtproto() {
         # golang
         local arch=$(get_architecture)
 
-        #  https://go.dev/dl/go1.18.4.linux-amd64.tar.gz
-        local golang_url="https://go.dev/dl/go1.18.4.linux-$arch.tar.gz"
+        #  https://go.dev/dl/go1.21.6.linux-amd64.tar.gz
+        local golang_url="https://go.dev/dl/go1.21.6.linux-$arch.tar.gz"
         wget $golang_url -O golang.tar.gz
         rm -rf go && tar -C . -xzf golang.tar.gz
         export PATH=$PATH:$(pwd)/go/bin
@@ -223,9 +223,9 @@ do_install() {
 
     if [[ "$mtg_provider" == "mtg" ]]; then
         local arch=$(get_architecture)
-        local mtg_url=https://github.com/9seconds/mtg/releases/download/v1.0.11/mtg-1.0.11-linux-amd64.tar.gz
+        local mtg_url=https://github.com/9seconds/mtg/releases/download/v2.1.7/mtg-2.1.7-linux-$arch.tar.gz
         wget $mtg_url -O mtg.tar.gz
-        tar -xzvf mtg.tar.gz mtg-1.0.11-linux-amd64/mtg --strip-components 1
+        tar -xzvf mtg.tar.gz mtg-2.1.7-linux-$arch/mtg --strip-components 1
 
         [[ -f "./mtg" ]] && ./mtg && echo "Installed for mtg"
     else
@@ -248,6 +248,8 @@ do_install_basic_dep() {
         yum install -y iproute curl wget procps-ng.x86_64
     elif check_sys packageManager apt; then
         apt install -y iproute2 curl wget procps
+    elif check_sys packageManager apk; then
+        apk add iproute2 curl wget procps
     fi
 
     return 0
@@ -259,6 +261,8 @@ do_install_build_dep() {
         yum groupinstall -y "Development Tools"
     elif check_sys packageManager apt; then
         apt install -y git curl  build-essential libssl-dev zlib1g-dev
+    elif check_sys packageManager apt; then
+        apk add git curl build-essential libssl-dev zlib1g-dev 
     fi
     return 0
 }

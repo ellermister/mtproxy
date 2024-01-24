@@ -84,8 +84,34 @@ ellermister/mtproxy
 - **IP** 开启 IP 白名单
 - **IPSEG** 开启 IP 段白名单
 
-`secret`指定密钥：如果你想创建已知的密钥，格式为：32位十六进制字符。
+`secret`指定密钥：如果你想创建已知的密钥，格式为：32位十六进制字符。  
 
+**docker compose 启动方式**  
+新建一个目录 `mkdir mtp && cd mtp`  
+新建 docker-compose.yml 文件, `vim docker-compose.yml`  
+```
+version: '3'
+services:
+  mtproxy:
+    image: ellermister/mtproxy
+    container_name: mtproxy
+    restart: always
+    environment:
+      domain: "cn.pornhub.com"
+      secret: "1234567890abcdef1234567890ABCDEF"
+      ip_white_list: "IP"
+      provider: "2"
+    # volumes:
+      # - ./ip_white.conf:/etc/nginx/ip_white.conf    # 挂载白名单IP，避免重启容器导致需要重新add授权。
+    ports:
+      - "8080:80"
+      - "2083:443"
+
+```
+启动方式
+```
+docker compose up -d
+```
 **在日志中查看链接的参数配置**：
 
 ```bash
