@@ -31,6 +31,9 @@ check_sys() {
     elif grep -Eqi "centos|red hat|redhat" /proc/version; then
         release="centos"
         systemPackage="yum"
+    elif grep -Eqi "alpine" /etc/issue || grep -Eq "alpine" /proc/version; then
+        release="alpine"
+        systemPackage="apk"
     fi
 
     if [[ "${checkType}" == "sysRelease" ]]; then
@@ -248,6 +251,8 @@ do_install_basic_dep() {
         yum install -y iproute curl wget procps-ng.x86_64
     elif check_sys packageManager apt; then
         apt install -y iproute2 curl wget procps
+    elif check_sys packageManager apk; then
+        apk add iproute2 curl wget procps
     fi
 
     return 0
@@ -259,6 +264,8 @@ do_install_build_dep() {
         yum groupinstall -y "Development Tools"
     elif check_sys packageManager apt; then
         apt install -y git curl  build-essential libssl-dev zlib1g-dev
+    elif check_sys packageManager apt; then
+        apk add git curl build-essential libssl-dev zlib1g-dev    
     fi
     return 0
 }
