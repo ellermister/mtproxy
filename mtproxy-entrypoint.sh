@@ -25,7 +25,7 @@ set_config(){
 		sed -i 's/domain="[0-9A-z\.\-]*"/domain="'$domain'"/' $mtp_config
 	fi
 	if [ "$provider" ] && [[ "$provider" =~ ^[1-2]$ ]]; then
-		sed -i 's/provider=[0-9]\+/cat /='$provider'/' $mtp_config
+		sed -i 's/provider=[0-9]\+/provider='$provider'/' $mtp_config
 	fi
 }
 
@@ -53,4 +53,4 @@ echo "=================================================="
 echo -e "Default port is \033[31m443\033[0m by docker started mtproxy!!!"
 echo "=================================================="
 cd /home/mtproxy
-bash /home/mtproxy/mtproxy.sh start
+bash /home/mtproxy/mtproxy.sh daemon

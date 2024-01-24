@@ -398,7 +398,7 @@ function gen_rand_hex() {
 }
 
 info_mtp() {
-    if is_running_mtp; then
+    if [[ "$1" == "ingore" ]] || is_running_mtp; then
         source ./mtp_config
         public_ip=$(get_ip_public)
 
@@ -452,6 +452,28 @@ run_mtp() {
         echo $! >$pid_file
         sleep 2
         info_mtp
+    fi
+}
+
+
+daemon_mtp() {
+    cd $WORKDIR
+
+    if is_running_mtp; then
+        echo -e "提醒：\033[33mMTProxy已经运行，请勿重复运行!\033[0m"
+    else
+        local command=$(get_run_command)
+        echo $command
+        while true
+        do
+            {
+                sleep 2
+                info_mtp "ingore"
+            } &
+            $command >/dev/null 2>&1
+            echo "进程检测到被关闭,正在重启中!!!"
+            sleep 2
+        done
     fi
 }
 
@@ -509,6 +531,9 @@ param=$1
 if [[ "start" == $param ]]; then
     echo "即将：启动脚本"
     run_mtp
+elif [[ "daemon" == $param ]]; then
+    echo "即将：启动脚本(守护进程)"
+    daemon_mtp
 elif [[ "stop" == $param ]]; then
     echo "即将：停止脚本"
     stop_mtp
