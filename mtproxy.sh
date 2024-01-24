@@ -223,9 +223,9 @@ do_install() {
 
     if [[ "$mtg_provider" == "mtg" ]]; then
         local arch=$(get_architecture)
-        local mtg_url=https://github.com/9seconds/mtg/releases/download/v1.0.11/mtg-1.0.11-linux-amd64.tar.gz
+        local mtg_url=https://github.com/9seconds/mtg/releases/download/v1.0.11/mtg-1.0.11-linux-$arch.tar.gz
         wget $mtg_url -O mtg.tar.gz
-        tar -xzvf mtg.tar.gz mtg-1.0.11-linux-amd64/mtg --strip-components 1
+        tar -xzvf mtg.tar.gz mtg-1.0.11-linux-$arch/mtg --strip-components 1
 
         [[ -f "./mtg" ]] && ./mtg && echo "Installed for mtg"
     else
