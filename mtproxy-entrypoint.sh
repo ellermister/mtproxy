@@ -53,4 +53,6 @@ echo "=================================================="
 echo -e "Default port is \033[31m443\033[0m by docker started mtproxy!!!"
 echo "=================================================="
 cd /home/mtproxy
-bash /home/mtproxy/mtproxy.sh daemon
+{
+	bash /home/mtproxy/mtproxy.sh daemon
+} &
