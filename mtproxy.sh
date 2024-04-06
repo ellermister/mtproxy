@@ -187,6 +187,29 @@ function is_installed() {
     return 0
 }
 
+
+function kill_process_by_port() {
+    pids=$(get_pids_by_port $1)
+    if [ -n "$pids" ]; then
+        kill -9 $pids
+    fi
+}
+
+function get_pids_by_port() {
+    echo $(netstat -tulpn 2>/dev/null | grep ":$1 " | awk '{print $7}' | sed 's|/.*||')
+}
+
+function is_port_open() {
+    pids=$(get_pids_by_port $1)
+
+    if [ -n "$pids" ]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+
 function is_running_mtp() {
     if [ -f $pid_file ]; then
 
@@ -243,11 +266,35 @@ print_line() {
     echo -e "========================================="
 }
 
+do_kill_process() {
+    cd $WORKDIR
+    source ./mtp_config
+
+    if is_port_open $port; then
+        echo "检测到端口 $port 被占用, 准备杀死进程!"
+        kill_process_by_port $port
+    fi
+    
+    if is_port_open $web_port; then
+        echo "检测到端口 $web_port 被占用, 准备杀死进程!"
+        kill_process_by_port $web_port
+    fi
+}
+
+do_check_system_datetime_and_update() {
+    offset=$(ntpdate -q time.google.com | grep -oP 'offset \K[\d]+' | tail -n 1)
+    tolerance=60
+     if [ "$offset" -gt "$tolerance" ] || [ "$offset" -lt "-$tolerance" ];then
+        echo "检测到系统时间不同步于世界时间, 即将更新"
+        ntpdate -u time.google.com
+    fi
+}
+
 do_install_basic_dep() {
     if check_sys packageManager yum; then
-        yum install -y iproute curl wget procps-ng.x86_64
+        yum install -y iproute curl wget procps-ng.x86_64 net-tools ntp
     elif check_sys packageManager apt; then
-        apt install -y iproute2 curl wget procps
+        apt install -y iproute2 curl wget procps net-tools ntpdate
     fi
 
     return 0
@@ -425,7 +472,7 @@ function get_run_command(){
       client_secret="ee${secret}${domain_hex}"
       local local_ip=$(get_local_ip)
       public_ip=$(get_ip_public)
-
+      
       # ./mtg simple-run -n 1.1.1.1 -t 30s -a 512kib 0.0.0.0:$port $client_secret >/dev/null 2>&1 &
       [[ -f "./mtg" ]] || (echo -e "提醒：\033[33m MTProxy 代理程序不存在请重新安装! \033[0m" && exit 1)
       echo "./mtg run $client_secret $proxy_tag -b 0.0.0.0:$port --multiplex-per-connection 500 --prefer-ip=ipv6 -t $local_ip:$web_port" -4 "$public_ip:$port"
@@ -446,6 +493,9 @@ run_mtp() {
     if is_running_mtp; then
         echo -e "提醒：\033[33mMTProxy已经运行，请勿重复运行!\033[0m"
     else
+        do_kill_process
+        do_check_system_datetime_and_update
+
         local command=$(get_run_command)
         echo $command
         $command >/dev/null 2>&1 &
@@ -463,6 +513,9 @@ daemon_mtp() {
     if is_running_mtp; then
         echo -e "提醒：\033[33mMTProxy已经运行，请勿重复运行!\033[0m"
     else
+        do_kill_process
+        do_check_system_datetime_and_update
+
         local command=$(get_run_command)
         echo $command
         while true
@@ -483,6 +536,9 @@ debug_mtp() {
 
     echo "当前正在运行调试模式："
     echo -e "\t你随时可以通过 Ctrl+C 进行取消操作"
+
+    do_kill_process
+    do_check_system_datetime_and_update
 
     local command=$(get_run_command)
     echo $command
