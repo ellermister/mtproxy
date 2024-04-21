@@ -34,6 +34,30 @@ curl -fsSL -o mtproxy.sh https://github.com/ellermister/mtproxy/raw/master/mtpro
 bash mtproxy.sh
 ```
 
+创建系统服务
+```
+cat > /etc/systemd/system/mtp.service <<EOF
+[Unit]
+Description=mtp
+After=network.target
+
+[Service]
+Type=forking
+ExecStart=/bin/bash /home/mtproxy/mtproxy.sh start
+ExecReload=/bin/bash /home/mtproxy/mtproxy.sh restart
+ExecStop=/bin/bash /home/mtproxy/mtproxy.sh stop
+
+[Install]
+WantedBy=multi-user.target
+EOF
+```
+
+启动服务并设置开机自启
+```
+systemctl start mtp
+systemctl enable mtp
+```
+
  ![mtproxy.sh](https://raw.githubusercontent.com/ellermister/mtproxy/master/mtproxy.jpg)
 
 ### 使用Docker | 白名单 MTProxy Docker 镜像
