@@ -98,6 +98,9 @@ docker logs -f mtproxy
 
 ## 使用方式
 
+配置文件 `mtp_config`，如果你想手动修改密钥或者参数请注意格式。
+
+
 运行服务
 
 ```bash
@@ -122,6 +125,12 @@ bash mtproxy.sh stop
 bash mtproxy.sh restart
 ```
 
+重新安装/重新配置
+
+```bash
+bash mtproxy.sh reinstall
+```
+
 ## 卸载安装
 
 因为是绿色版卸载极其简单，直接删除所在目录即可。
@@ -141,6 +150,26 @@ rm -rf /home/mtproxy
 ```bash
 cd /home/mtproxy && bash mtproxy.sh start > /dev/null 2>&1 &
 ```
+
+
+## 计划任务守护
+
+因为默认官方的 mtproxy 程序存在BUG，pid 大于 65535 时处理存在问题。进程容易坏死和异常退出。
+
+建议通过计划任务去守护进程，编辑方式 `crontab -e` ：
+
+每分钟检测进程并启动
+
+```bash
+* * * * * cd /home/mtproxy && bash mtproxy.sh start > /dev/null 2>&1 &
+```
+
+## MTProxy Admin Bot
+
+https://t.me/MTProxybot
+> Sorry, an error has occurred during your request. Please try again later.(Code xxxxxx)
+
+如果你在申请绑定代理推广时遇到了此类错误，官方没有给出明确的原因，根据网友反馈，此类问题多出现于账号注册不足与 2~3 年，**建议使用 3 年以上的账号以及未被 banned 的账号。**
 
 ## 引用项目
 
