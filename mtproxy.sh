@@ -48,6 +48,10 @@ check_sys() {
     fi
 }
 
+function abs() {
+    echo ${1#-};
+}
+
 function get_ip_public() {
     public_ip=$(curl -s https://api.ip.sb/ip -A Mozilla --ipv4)
     [ -z "$public_ip" ] && public_ip=$(curl -s ipinfo.io/ip -A Mozilla --ipv4)
@@ -282,9 +286,11 @@ do_kill_process() {
 }
 
 do_check_system_datetime_and_update() {
-    offset=$(ntpdate -q time.google.com | grep -oP 'offset \K[\d]+' | tail -n 1)
+    dateFromLocal=$(date +%s)
+    dateFromServer=$(date -d "$(curl -v --silent ip.sb 2>&1 | grep Date | sed -e 's/< Date: //')" +%s)
+    offset=$(abs $(( "$dateFromServer" - "$dateFromLocal")))
     tolerance=60
-     if [ "$offset" -gt "$tolerance" ] || [ "$offset" -lt "-$tolerance" ];then
+    if [ "$offset" -gt "$tolerance" ];then
         echo "检测到系统时间不同步于世界时间, 即将更新"
         ntpdate -u time.google.com
     fi
