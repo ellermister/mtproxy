@@ -4,7 +4,7 @@
 
 在此基础上，提供了 Nginx 作为前端转发，MTProxy 作为后端代理的方式以实现安全的伪装，并且在 nginx 转发层进行配置了 IP 白名单，只有通过白名单认证过的 IP 才可以进行访问，此功能提供了 Docker 镜像以便开箱即用。
 
- [English](README-en.md)
+ [English](README_EN.md)
 
 ## 交流群组
 
