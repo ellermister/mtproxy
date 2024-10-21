@@ -1,10 +1,13 @@
+<div align="right">
+  <a title="简体中文" href="README.md"><img src="https://img.shields.io/badge/-%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-545759?style=for-the-badge" alt="简体中文" /></a>
+  <a title="English" href="README_EN.md"><img src="https://img.shields.io/badge/-English-A31F34?style=for-the-badge" alt="Englis"></a>
+</div>
+
 # mtproxy
 
 这是一个一键安装 MTProxy 代理的绿色脚本，脚本可以在官方版本的 MTProxy 程序和兼容性最强的第三方作者开发的 mtg 程序中进行选择静态安装或者编译，该版本默认支持 Fake TLS 以及 AdTag 配置。
 
 在此基础上，提供了 Nginx 作为前端转发，MTProxy 作为后端代理的方式以实现安全的伪装，并且在 nginx 转发层进行配置了 IP 白名单，只有通过白名单认证过的 IP 才可以进行访问，此功能提供了 Docker 镜像以便开箱即用。
-
- [English](README_EN.md)
 
 ## 交流群组
 
