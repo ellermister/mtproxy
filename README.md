@@ -8,13 +8,13 @@
 
 ## 交流群组
 
-Telegram 群组：https://t.me/EllerHK
+Telegram 群组：<https://t.me/EllerHK>
 
 ## 安装方式
 
 提供了两种安装方式可供选择：
 
-- 使用脚本 
+- 使用脚本
 
   选择该方式一般是你在宿主机中进行直接安装或者编译，会或多或少需要安装一些系统基础依赖库。
 
@@ -64,6 +64,7 @@ docker run -d \
 -p 8443:443 \
 ellermister/mtproxy
  ```
+
 **镜像默认开启了 IP 段白名单**，如果你不需要可以配置 `ip_white_list="OFF"` 取消：
 
 ```bash
@@ -94,12 +95,11 @@ docker logs -f mtproxy
 
 连接端口记得修改为你映射后的外部端口，如上文例子中都是`8443`，在连接时修改端口。
 
-更多使用请参考： https://hub.docker.com/r/ellermister/mtproxy
+更多使用请参考： <https://hub.docker.com/r/ellermister/mtproxy>
 
 ## 使用方式
 
 配置文件 `mtp_config`，如果你想手动修改密钥或者参数请注意格式。
-
 
 运行服务
 
@@ -151,7 +151,6 @@ rm -rf /home/mtproxy
 cd /home/mtproxy && bash mtproxy.sh start > /dev/null 2>&1 &
 ```
 
-
 ## 计划任务守护
 
 因为默认官方的 mtproxy 程序存在BUG，pid 大于 65535 时处理存在问题。进程容易坏死和异常退出。
@@ -166,14 +165,12 @@ cd /home/mtproxy && bash mtproxy.sh start > /dev/null 2>&1 &
 
 ## MTProxy Admin Bot
 
-https://t.me/MTProxybot
+<https://t.me/MTProxybot>
 > Sorry, an error has occurred during your request. Please try again later.(Code xxxxxx)
 
 如果你在申请绑定代理推广时遇到了此类错误，官方没有给出明确的原因，根据网友反馈，此类问题多出现于账号注册不足与 2~3 年，**建议使用 3 年以上的账号以及未被 banned 的账号。**
 
 ## 引用项目
 
-- https://github.com/TelegramMessenger/MTProxy
-- https://github.com/9seconds/mtg
-
-
+- <https://github.com/TelegramMessenger/MTProxy>
+- <https://github.com/9seconds/mtg>

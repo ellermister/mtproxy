@@ -2,13 +2,9 @@
 
 MTProxyTLS one-click install script
 
-
-
 ## Discussion
 
-Telegram Group: https://t.me/EllerHK
-
-
+Telegram Group: <https://t.me/EllerHK>
 
 ## Install
 
@@ -39,9 +35,7 @@ The image enabled the IP segment whitelist  by default. If you don't need it, yo
 docker run --name nginx-mtproxy -d -e secret="$secret" -e domain="$domain" -e ip_white_list="IP" -p 8080:80 -p 8443:443 ellermister/nginx-mtproxy:latest
 ```
 
-For more usage: https://hub.docker.com/r/ellermister/nginx-mtproxy
-
-
+For more usage: <https://hub.docker.com/r/ellermister/nginx-mtproxy>
 
 ## Usage
 
@@ -69,8 +63,6 @@ Restart service
 bash mtproxy.sh restart
 ```
 
-
-
 ## Uninstall
 
 Just delete the directory where it is located.
@@ -78,8 +70,6 @@ Just delete the directory where it is located.
 ```bash
 rm -rf /home/mtproxy
 ```
-
-
 
 ## Run on Startup
 
@@ -91,5 +81,5 @@ cd /home/mtproxy && bash mtproxy.sh start > /dev/null 2>&1 &
 
 ## Open Source Used
 
-- https://github.com/TelegramMessenger/MTProxy
-- https://github.com/9seconds/mtg
+- <https://github.com/TelegramMessenger/MTProxy>
+- <https://github.com/9seconds/mtg>
