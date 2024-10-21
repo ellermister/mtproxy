@@ -43,11 +43,7 @@ bash mtproxy.sh
 
 ### 使用 Docker | 白名单 MTProxy Docker 镜像
 
-The image integrates nginx and mtproxy+tls to disguise traffic, and uses a whitelist mode to deal with firewall detection.
-
 该镜像集成了 nginx、mtproxy+tls 实现对流量的伪装，并采用**白名单**模式来应对防火墙的检测。
-
-If you use this Docker image, you don't need to use the script, you can choose one of the two, don't mix it up.
 
 若使用该 Docker 镜像, 就不需要用脚本了，二者二选一，不要搞混了。
 
@@ -161,7 +157,7 @@ cd /home/mtproxy && bash mtproxy.sh start > /dev/null 2>&1 &
 
 由于默认官方的 mtproxy 程序存在BUG，在 pid 大于 65535 时进程处理存在问题，进程容易坏死和异常退出。
 
-因此建议通过计划任务去守护进程，编辑方式 `crontab -e` ：
+因此建议通过计划任务去守护进程 `crontab -e` ：
 
 每分钟检测进程并启动
 
@@ -174,7 +170,7 @@ cd /home/mtproxy && bash mtproxy.sh start > /dev/null 2>&1 &
 <https://t.me/MTProxybot>
 > Sorry, an error has occurred during your request. Please try again later.(Code xxxxxx)
 
-如果你在申请绑定代理推广时遇到了此类错误，官方没有给出明确的原因，根据网友反馈，此类问题多出现于账号注册不足与 2~3 年。  
+如果你在申请绑定代理推广时遇到了此类错误，官方没有给出明确的原因。根据网友反馈，此类问题多出现于账号注册不足与 2~3 年。  
 **建议使用 3 年以上的账号以及未被 banned 的账号。**
 
 ## 引用项目
