@@ -96,8 +96,6 @@ For more usage: <https://hub.docker.com/r/ellermister/nginx-mtproxy>
 
 ## Usage
 
-Start service
-
 Configuration file `mtp_config`, pay attention to the format if you want to change secret manually.
 
 Start service
