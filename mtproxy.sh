@@ -256,7 +256,7 @@ do_install() {
 
         [[ -f "./mtg" ]] && ./mtg && echo "Installed for mtg"
     else
-        wget https://github.com/ellermister/mtproxy/releases/download/0.03/mtproto-proxy -O mtproto-proxy -q
+        wget https://github.com/ellermister/mtproxy/releases/download/v0.04/mtproto-proxy -O mtproto-proxy -q
         chmod +x mtproto-proxy
     fi
 
