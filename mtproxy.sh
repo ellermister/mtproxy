@@ -248,7 +248,7 @@ function is_pid_exists() {
 }
 
 do_install_proxy() {
-    $mtg_provider=$1
+    local mtg_provider=$1
 
     if [[ "$mtg_provider" == "mtg" ]]; then
         local arch=$(get_architecture)
