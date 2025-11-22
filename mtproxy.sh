@@ -250,9 +250,13 @@ do_install() {
 
     if [[ "$mtg_provider" == "mtg" ]]; then
         local arch=$(get_architecture)
-        local mtg_url=https://github.com/9seconds/mtg/releases/download/v1.0.11/mtg-1.0.11-linux-$arch.tar.gz
-        wget $mtg_url -O mtg.tar.gz
-        tar -xzvf mtg.tar.gz mtg-1.0.11-linux-$arch/mtg --strip-components 1
+        if [ "amd64" != "$arch" ]; then
+            echo -e "[\033[33m提醒\033[0m] 你的系统架构不支持安装 mtg\n"
+            exit 1
+        fi
+        local mtg_url="https://github.com/ellermister/mtproxy/releases/download/v0.04/mtg"
+        wget $mtg_url -O mtg
+        chmod +x mtg
 
         [[ -f "./mtg" ]] && ./mtg && echo "Installed for mtg"
     else
@@ -297,10 +301,15 @@ do_check_system_datetime_and_update() {
 }
 
 do_install_basic_dep() {
+    echo -e "[\033[33m提醒\033[0m] 正在检测并安装基础依赖...\n"
     if check_sys packageManager yum; then
-        yum install -y iproute curl wget procps-ng.x86_64 net-tools ntp
+        yum update && yum install -y iproute curl wget procps-ng.x86_64 net-tools ntp
     elif check_sys packageManager apt; then
-        apt install -y iproute2 curl wget procps net-tools ntpdate
+        apt update
+        # 先安装必需的包
+        apt install -y iproute2 curl wget procps net-tools || true
+        # 尝试安装时间同步工具（可选，允许失败）
+        apt install -y ntpsec-ntpdate 2>/dev/null || apt install -y ntpdate 2>/dev/null || true
     fi
 
     return 0
@@ -481,7 +490,7 @@ function get_run_command(){
       
       # ./mtg simple-run -n 1.1.1.1 -t 30s -a 512kib 0.0.0.0:$port $client_secret >/dev/null 2>&1 &
       [[ -f "./mtg" ]] || (echo -e "提醒：\033[33m MTProxy 代理程序不存在请重新安装! \033[0m" && exit 1)
-      echo "./mtg run $client_secret $proxy_tag -b 0.0.0.0:$port --multiplex-per-connection 500 --prefer-ip=ipv6 -t $local_ip:$web_port" -4 "$public_ip:$port"
+      echo "./mtg run $client_secret $proxy_tag -b 0.0.0.0:$port --multiplex-per-connection 500 --prefer-ip=ipv4 -t $local_ip:$web_port" -4 "$public_ip:$port"
   else
       curl -s https://core.telegram.org/getProxyConfig -o proxy-multi.conf
       curl -s https://core.telegram.org/getProxySecret -o proxy-secret
