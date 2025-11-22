@@ -1,8 +1,8 @@
 #!/bin/bash
 set -e
-/usr/sbin/php-fpm7.4 -R
+/usr/sbin/php-fpm* -R
 chmod 777 /etc/nginx/ip_white.conf
-chmod 777 /run/php/php7.4-fpm.sock
+chmod 777 /run/php/php-fpm.sock
 
 
 default_config="/home/mtproxy/mtp_config.example"
@@ -18,13 +18,13 @@ set_config(){
 	if [ "$secret" ] && [[ "$secret" =~ ^[A-Za-z0-9]{32}$ ]]; then
 		sed -i 's/secret="[0-9A-Za-z]*"/secret="'$secret'"/' $mtp_config
 	fi
-	if [ "$tag" ] && [[ "$tag" =~ ^[A-Za-z0-9]{32}$ ]]; then
-		sed -i 's/adtag="[0-9A-Za-z]*"/adtag="'$tag'"/' $mtp_config
+	if [ "$adtag" ] && [[ "$adtag" =~ ^[A-Za-z0-9]{32}$ ]]; then
+		sed -i 's/adtag="[0-9A-Za-z]*"/adtag="'$adtag'"/' $mtp_config
 	fi
 	if [ "$domain" ]; then
 		sed -i 's/domain="[0-9A-z\.\-]*"/domain="'$domain'"/' $mtp_config
 	fi
-	if [ "$provider" ] && [[ "$provider" =~ ^[1-2]$ ]]; then
+	if [ "$provider" ] && [[ "$provider" =~ ^[1-3]$ ]]; then
 		sed -i 's/provider=[0-9]\+/provider='$provider'/' $mtp_config
 	fi
 }

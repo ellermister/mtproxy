@@ -2,6 +2,7 @@
 WORKDIR=$(dirname $(readlink -f $0))
 cd $WORKDIR
 SYSTEM_ARCH=$(uname -m)
+SYSTEM_PYTHON=$(which python3 || which python)
 
 IS_DOCKER=$( [ -f /.dockerenv ] && echo "true" || echo "false" )
 
@@ -10,9 +11,13 @@ CONFIG_PATH=$WORKDIR/config
 
 URL_MTG="https://github.com/ellermister/mtproxy/releases/download/v0.04/$(uname -m)-mtg"
 URL_MTPROTO="https://github.com/ellermister/mtproxy/releases/download/v0.04/mtproto-proxy"
-
+URL_PY_MTPROTOPROXY="https://github.com/alexbers/mtprotoproxy/archive/refs/heads/master.zip"
 BINARY_MTG_PATH=$WORKDIR/bin/mtg
 BINARY_MTPROTO_PROXY_PATH=$WORKDIR/bin/mtproto-proxy
+BINARY_PY_MTPROTOPROXY_PATH=$WORKDIR/bin/mtprotoproxy.py
+
+PUBLIC_IP=""
+
 
 check_sys() {
     local checkType=$1
@@ -65,20 +70,26 @@ function abs() {
 
 function get_ip_public() {
     local public_ip=""
+
+    # 尝试 Cloudflare trace API
+    if [ -z "$public_ip" ]; then
+        public_ip=$(curl -4 -s --connect-timeout 5 --max-time 10 https://1.1.1.1/cdn-cgi/trace -A Mozilla 2>/dev/null | grep "^ip=" | cut -d'=' -f2)
+    fi
     
-    # 尝试第一个API获取公网IP
-    public_ip=$(curl -s --connect-timeout 5 --max-time 10 https://api.ip.sb/ip -A Mozilla --ipv4 2>/dev/null)
+    # 尝试 ip.sb API获取公网IP
+    if [ -z "$public_ip" ]; then
+        public_ip=$(curl -s --connect-timeout 5 --max-time 10 https://api.ip.sb/ip -A Mozilla --ipv4 2>/dev/null)
+    fi
     
-    # 如果第一个API失败，尝试第二个API
+    # 尝试 ipinfo.io API
     if [ -z "$public_ip" ]; then
         public_ip=$(curl -s --connect-timeout 5 --max-time 10 https://ipinfo.io/ip -A Mozilla --ipv4 2>/dev/null)
     fi
     
-    # 如果两个API都失败，退出
+    # 如果所有API都失败，退出
     if [ -z "$public_ip" ]; then
         print_error_exit "Failed to get public IP address. Please check your network connection."
     fi
-    
     echo "$public_ip"
 }
 
@@ -97,10 +108,9 @@ function get_local_ip(){
 
 function get_nat_ip_param() {
     nat_ip=$(get_ip_private)
-    public_ip=$(get_ip_public)
     nat_info=""
-    if [[ $nat_ip != $public_ip ]]; then
-        nat_info="--nat-info ${nat_ip}:${public_ip}"
+    if [[ $nat_ip != $PUBLIC_IP ]]; then
+        nat_info="--nat-info ${nat_ip}:${PUBLIC_IP}"
     fi
     echo $nat_info
 }
@@ -195,9 +205,11 @@ function get_mtg_provider() {
     fi
 
     if [ $provider -eq 1 ]; then
-        echo "mtproto-proxy"
+        echo "official-MTProxy"
     elif [ $provider -eq 2 ]; then
         echo "mtg"
+    elif [ $provider -eq 3 ]; then
+        echo "python-mtprotoproxy"
     else
         print_error_exit "Invalid configuration, please reinstall"
     fi
@@ -243,15 +255,6 @@ function is_running_mtp() {
     return 1
 }
 
-function is_supported_official_version() {
-    local arch=$(uname -m)
-    if [[ "$arch" == "x86_64" ]]; then
-        return 0
-    else
-        return 1
-    fi
-}
-
 function is_pid_exists() {
     # check_ps_not_install_to_install
     local exists=$(ps aux | awk '{print $2}' | grep -w $1)
@@ -278,7 +281,7 @@ do_install_proxy() {
             print_error_exit "Install mtg failed"
         fi
         print_info "Installed for mtg"
-    else
+    elif [[ "$mtg_provider" == "official-MTProxy" ]]; then
         wget $URL_MTPROTO -O $BINARY_MTPROTO_PROXY_PATH -q
         chmod +x $BINARY_MTPROTO_PROXY_PATH
         $BINARY_MTPROTO_PROXY_PATH
@@ -287,6 +290,13 @@ do_install_proxy() {
             print_error_exit "Install mtproto-proxy failed"
         fi
         print_info "Installed for mtproto-proxy"
+    
+    elif [[ "$mtg_provider" == "python-mtprotoproxy" ]]; then
+        wget $URL_PY_MTPROTOPROXY -O mtprotoproxy-master.zip
+        unzip mtprotoproxy-master.zip
+        cp -rf mtprotoproxy-master/*.py mtprotoproxy-master/pyaes $WORKDIR/bin/
+        rm -rf mtprotoproxy-master mtprotoproxy-master.zip
+        print_info "Installed for mtprotoproxy"
     fi
 }
 
@@ -328,6 +338,9 @@ print_subject() {
 
 do_kill_process() {
     cd $WORKDIR
+    if [ ! -f "$CONFIG_PATH" ]; then
+        print_error_exit "配置文件不存在,请重新安装"
+    fi
     source $CONFIG_PATH
 
     if is_port_open $port; then
@@ -366,7 +379,7 @@ do_install_basic_dep() {
     elif check_sys packageManager apt; then
         apt update
         # 先安装必需的包
-        apt install -y iproute2 curl wget procps net-tools || true
+        apt install -y iproute2 curl wget procps net-tools unzip || true
         # 尝试安装时间同步工具（可选，允许失败）
         apt install -y ntpsec-ntpdate 2>/dev/null || apt install -y ntpdate 2>/dev/null || true
     fi
@@ -391,18 +404,31 @@ do_config_mtp() {
     while true; do
         default_provider=1
         print_subject "请输入要安装的程序版本"
-        echo -e "1. Telegram 官方版本 (C语言, 存在一些问题, 只支持 x86_64)"
-        echo -e "2. 9seconds 第三方版本(兼容性强)"
-
-        if ! is_supported_official_version; then
-            print_warning "你的系统不支持该版本"
+        echo ""
+        
+        if [ "$SYSTEM_ARCH" == "x86_64" ]; then
+            echo -e "  \033[36m1.\033[0m MTProxy (TelegramMessenger)"
+            echo -e "     └─ Telegram官方版本,只支持 x86_64, 存在很多问题"
+        else
+            echo -e "  \033[90m1.\033[0mMTProxy (TelegramMessenger) \033[33m[不支持当前架构]\033[0m"
+            echo -e "     └─ Telegram官方版本,只支持 x86_64, 存在很多问题"
         fi
+        
+        echo -e "  \033[36m2.\033[0m mtg (9seconds)"
+        echo -e "     └─ Golang 版本, 兼容性强, 推荐使用"
+        
+        echo -e "  \033[36m3.\033[0m mtprotoproxy (alexbers)"
+        echo -e "     └─ Python 版本, 兼容性强"
+        echo ""
+
+        [ "$SYSTEM_ARCH" != "x86_64" ] && default_provider=2
 
         read -p "(默认版本: ${default_provider}):" input_provider
         [ -z "${input_provider}" ] && input_provider=${default_provider}
         expr ${input_provider} + 1 &>/dev/null
         if [ $? -eq 0 ]; then
-            if [ ${input_provider} -ge 1 ] && [ ${input_provider} -le 2 ] && [ ${input_provider:0:1} != 0 ]; then
+            [ "$SYSTEM_ARCH" != "x86_64" ] && [ ${input_provider} -eq 1 ] && print_warning "你的系统不支持该版本, 请重新输入" && continue
+            if [ ${input_provider} -ge 1 ] && [ ${input_provider} -le 3 ] && [ ${input_provider:0:1} != 0 ]; then
                 echo
                 echo "---------------------------"
                 echo "provider = ${input_provider}"
@@ -411,7 +437,7 @@ do_config_mtp() {
                 break
             fi
         fi
-        print_warning "请重新输入程序版本 [1-3]\n"
+        print_warning "请重新输入程序版本 [1-3]"
     done
 
     while true; do
@@ -473,7 +499,6 @@ do_config_mtp() {
     done
 
     # config info
-    public_ip=$(get_ip_public)
     secret=$(gen_rand_hex 32)
 
     # proxy tag
@@ -481,7 +506,7 @@ do_config_mtp() {
         default_tag=""
         print_subject "请输入你需要推广的TAG："
         echo -e "若没有,请联系 @MTProxybot 进一步创建你的TAG, 可能需要信息如下："
-        echo -e "IP: ${public_ip}"
+        echo -e "IP: ${PUBLIC_IP}"
         echo -e "PORT: ${input_port}"
         echo -e "SECRET(可以随便填): ${secret}"
         read -p "(留空则跳过):" input_tag
@@ -523,17 +548,16 @@ function gen_rand_hex() {
 info_mtp() {
     if [[ "$1" == "ingore" ]] || is_running_mtp; then
         source $CONFIG_PATH
-        public_ip=$(get_ip_public)
 
         domain_hex=$(str_to_hex $domain)
 
         client_secret="ee${secret}${domain_hex}"
         echo -e "TMProxy+TLS代理: \033[32m运行中\033[0m"
-        echo -e "服务器IP：\033[31m$public_ip\033[0m"
+        echo -e "服务器IP：\033[31m$PUBLIC_IP\033[0m"
         echo -e "服务器端口：\033[31m$port\033[0m"
         echo -e "MTProxy Secret:  \033[31m$client_secret\033[0m"
-        echo -e "TG一键链接: https://t.me/proxy?server=${public_ip}&port=${port}&secret=${client_secret}"
-        echo -e "TG一键链接: tg://proxy?server=${public_ip}&port=${port}&secret=${client_secret}"
+        echo -e "TG一键链接: https://t.me/proxy?server=${PUBLIC_IP}&port=${port}&secret=${client_secret}"
+        echo -e "TG一键链接: tg://proxy?server=${PUBLIC_IP}&port=${port}&secret=${client_secret}"
     else
         echo -e "TMProxy+TLS代理: \033[33m已停止\033[0m"
     fi
@@ -547,12 +571,26 @@ function get_run_command(){
       domain_hex=$(str_to_hex $domain)
       client_secret="ee${secret}${domain_hex}"
       local local_ip=$(get_local_ip)
-      public_ip=$(get_ip_public)
       
       # ./mtg simple-run -n 1.1.1.1 -t 30s -a 512kib 0.0.0.0:$port $client_secret >/dev/null 2>&1 &
       [[ -f "$BINARY_MTG_PATH" ]] || (print_warning "MTProxy 代理程序不存在请重新安装!" && exit 1)
-      echo "$BINARY_MTG_PATH run $client_secret $adtag -b 0.0.0.0:$port --multiplex-per-connection 500 --prefer-ip=ipv4 -t $local_ip:$statport" -4 "$public_ip:$port"
-  else
+      echo "$BINARY_MTG_PATH run $client_secret $adtag -b 0.0.0.0:$port --multiplex-per-connection 500 --prefer-ip=ipv4 -t $local_ip:$statport" -4 "$PUBLIC_IP:$port"
+  elif [[ "$mtg_provider" == "python-mtprotoproxy" ]]; then
+        cat >$WORKDIR/bin/config.py <<EOF
+PORT = ${port}
+USERS = {
+    "tg":  "${secret}",
+}
+MODES = {
+    "classic": False,
+    "secure": False,
+    "tls": True
+}
+TLS_DOMAIN = "${domain}"
+AD_TAG = "${adtag}"
+EOF
+      echo "$SYSTEM_PYTHON $BINARY_PY_MTPROTOPROXY_PATH $WORKDIR/bin/config.py"
+  elif [[ "$mtg_provider" == "official-MTProxy" ]]; then
       curl -s https://core.telegram.org/getProxyConfig -o proxy-multi.conf
       curl -s https://core.telegram.org/getProxySecret -o proxy-secret
       nat_info=$(get_nat_ip_param)
@@ -560,6 +598,9 @@ function get_run_command(){
       tag_arg=""
       [[ -n "$adtag" ]] && tag_arg="-P $adtag"
       echo "$BINARY_MTPROTO_PROXY_PATH -u nobody -p $statport -H $port -S $secret --aes-pwd proxy-secret proxy-multi.conf -M $workerman $tag_arg --domain $domain $nat_info --ipv6"
+  else
+      print_warning "Invalid configuration, please reinstall"
+      exit 1
   fi
 }
 
@@ -567,7 +608,7 @@ run_mtp() {
     cd $WORKDIR
 
     if is_running_mtp; then
-        echo -e "提醒：\033[33mMTProxy已经运行，请勿重复运行!\033[0m"
+        print_warning "MTProxy已经运行，请勿重复运行!"
     else
         do_kill_process
         do_check_system_datetime_and_update
@@ -587,7 +628,7 @@ daemon_mtp() {
     cd $WORKDIR
 
     if is_running_mtp; then
-        echo -e "提醒：\033[33mMTProxy已经运行，请勿重复运行!\033[0m"
+        print_warning "MTProxy已经运行，请勿重复运行!"
     else
         do_kill_process
         do_check_system_datetime_and_update
@@ -601,7 +642,7 @@ daemon_mtp() {
                 info_mtp "ingore"
             } &
             $command >/dev/null 2>&1
-            echo "进程检测到被关闭,正在重启中!!!"
+            print_warning "进程检测到被关闭,正在重启中!!!"
             sleep 2
         done
     fi
@@ -610,8 +651,8 @@ daemon_mtp() {
 debug_mtp() {
     cd $WORKDIR
 
-    echo "当前正在运行调试模式："
-    echo -e "\t你随时可以通过 Ctrl+C 进行取消操作"
+    print_info "当前正在运行调试模式："
+    print_warning "\t你随时可以通过 Ctrl+C 进行取消操作"
 
     do_kill_process
     do_check_system_datetime_and_update
@@ -661,6 +702,10 @@ reinstall_mtp() {
 
 param=$1
 
+if [ -z "$PUBLIC_IP" ]; then
+    PUBLIC_IP=$(get_ip_public) || print_error_exit "Failed to get public IP address. Please check your network connection."
+fi
+
 if [[ "start" == $param ]]; then
     print_info "即将：启动脚本"
     run_mtp
@@ -679,14 +724,17 @@ elif [[ "restart" == $param ]]; then
 elif [[ "reinstall" == $param ]]; then
     reinstall_mtp
 elif [[ "build" == $param ]]; then
+    do_install_proxy "python-mtprotoproxy"
+    exit 0
     arch=$(get_architecture)
     if [[ "$arch" == "amd64" ]]; then
         # build_mtproto 1
-        do_install_proxy "mtproto-proxy"
+        do_install_proxy "official-MTProxy"
     fi
     
     # build_mtproto 2
     do_install_proxy "mtg"
+    do_install_proxy "python-mtprotoproxy"
 else
     if ! is_installed; then
         echo "MTProxyTLS一键安装运行绿色脚本"
