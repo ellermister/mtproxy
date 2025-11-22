@@ -34,7 +34,7 @@ curl -fsSL -o mtproxy.sh https://github.com/ellermister/mtproxy/raw/master/mtpro
 bash mtproxy.sh
 ```
 
- ![mtproxy.sh](https://raw.githubusercontent.com/ellermister/mtproxy/master/mtproxy.jpg)
+ ![mtproxy.sh](https://raw.githubusercontent.com/ellermister/mtproxy/master/preview.jpg)
 
 ### Docker | Whitelist MTProxy Docker Image
 

@@ -1,11 +1,18 @@
 #!/bin/bash
 WORKDIR=$(dirname $(readlink -f $0))
 cd $WORKDIR
-pid_file=$WORKDIR/pid/pid_mtproxy
+SYSTEM_ARCH=$(uname -m)
 
+IS_DOCKER=$( [ -f /.dockerenv ] && echo "true" || echo "false" )
 
-MTG_URL="https://github.com/ellermister/mtproxy/releases/download/v0.04/$(uname -m)-mtg"
-MTPROTO_URL="https://github.com/ellermister/mtproxy/releases/download/v0.04/mtproto-proxy"
+PID_FILE=$WORKDIR/pid/pid_mtproxy
+CONFIG_PATH=$WORKDIR/config
+
+URL_MTG="https://github.com/ellermister/mtproxy/releases/download/v0.04/$(uname -m)-mtg"
+URL_MTPROTO="https://github.com/ellermister/mtproxy/releases/download/v0.04/mtproto-proxy"
+
+BINARY_MTG_PATH=$WORKDIR/bin/mtg
+BINARY_MTPROTO_PROXY_PATH=$WORKDIR/bin/mtproto-proxy
 
 check_sys() {
     local checkType=$1
@@ -57,9 +64,22 @@ function abs() {
 }
 
 function get_ip_public() {
-    public_ip=$(curl -s https://api.ip.sb/ip -A Mozilla --ipv4)
-    [ -z "$public_ip" ] && public_ip=$(curl -s ipinfo.io/ip -A Mozilla --ipv4)
-    echo $public_ip
+    local public_ip=""
+    
+    # 尝试第一个API获取公网IP
+    public_ip=$(curl -s --connect-timeout 5 --max-time 10 https://api.ip.sb/ip -A Mozilla --ipv4 2>/dev/null)
+    
+    # 如果第一个API失败，尝试第二个API
+    if [ -z "$public_ip" ]; then
+        public_ip=$(curl -s --connect-timeout 5 --max-time 10 https://ipinfo.io/ip -A Mozilla --ipv4 2>/dev/null)
+    fi
+    
+    # 如果两个API都失败，退出
+    if [ -z "$public_ip" ]; then
+        print_error_exit "Failed to get public IP address. Please check your network connection."
+    fi
+    
+    echo "$public_ip"
 }
 
 function get_ip_private() {
@@ -106,8 +126,7 @@ function build_mtproto() {
 
     local platform=$(uname -m)
     if [[ -z "$1" ]]; then
-        echo "缺少参数"
-        exit 1
+        print_error_exit "缺少参数"
     fi
 
     do_install_build_dep
@@ -124,8 +143,7 @@ function build_mtproto() {
         cd MTProxy && make && cd objs/bin &&  chmod +x mtproto-proxy
 
         if [ ! -f "./mtproto-proxy" ]; then
-            echo "mtproto-proxy 编译失败"
-            exit 1
+            print_error_exit "mtproto-proxy 编译失败"
         fi
 
         cp -f mtproto-proxy $WORKDIR
@@ -148,8 +166,7 @@ function build_mtproto() {
         if [[ $? != 0 ]]; then
             local uname_m=$(uname -m)
             local architecture_origin=$(dpkg --print-architecture)
-            echo -e "[\033[33mError\033[0m] golang download failed, please check!!! arch: $arch, platform: $platform,  uname: $uname_m, architecture_origin: $architecture_origin download url: $golang_url"
-            exit 1
+            print_error_exit "golang download failed, please check!!! arch: $arch, platform: $platform,  uname: $uname_m, architecture_origin: $architecture_origin download url: $golang_url"
         fi
 
         rm -rf build-mtg
@@ -157,8 +174,7 @@ function build_mtproto() {
         cd build-mtg && git reset --hard 9d67414db633dded5f11d549eb80617dc6abb2c3  && make static
 
         if [[ ! -f "./mtg" ]]; then
-            echo -e "[\033[33mError\033[0m] Build fail for mtg, please check!!! $arch"
-            exit 1
+            print_error_exit "Build fail for mtg, please check!!! $arch"
         fi
 
         cp -f mtg $WORKDIR && chmod +x $WORKDIR/mtg
@@ -171,7 +187,7 @@ function build_mtproto() {
 }
 
 function get_mtg_provider() {
-    source ./mtp_config
+    source $CONFIG_PATH
 
     local arch=$(get_architecture)
     if [[ "$arch" != "amd64" && $provider -eq 1 ]]; then
@@ -183,13 +199,12 @@ function get_mtg_provider() {
     elif [ $provider -eq 2 ]; then
         echo "mtg"
     else
-        echo "错误配置,请重新安装"
-        exit 1
+        print_error_exit "Invalid configuration, please reinstall"
     fi
 }
 
 function is_installed() {
-    if [ ! -f "$WORKDIR/mtp_config" ]; then
+    if [ ! -f "$CONFIG_PATH" ]; then
         return 1
     fi
     return 0
@@ -219,9 +234,9 @@ function is_port_open() {
 
 
 function is_running_mtp() {
-    if [ -f $pid_file ]; then
+    if [ -f $PID_FILE ]; then
 
-        if is_pid_exists $(cat $pid_file); then
+        if is_pid_exists $(cat $PID_FILE); then
             return 0
         fi
     fi
@@ -250,26 +265,28 @@ function is_pid_exists() {
 do_install_proxy() {
     local mtg_provider=$1
 
+    if [ ! -d "$WORKDIR/bin" ]; then
+        mkdir -p $WORKDIR/bin
+    fi
+
     if [[ "$mtg_provider" == "mtg" ]]; then
-        wget $MTG_URL -O mtg -q
-        chmod +x mtg
-        ./mtg
+        wget $URL_MTG -O $BINARY_MTG_PATH -q
+        chmod +x $BINARY_MTG_PATH
+        $BINARY_MTG_PATH
         exit_code=$?
         if [ $exit_code -ne 0 ]; then
-            echo -e "[\033[33m提醒\033[0m] 安装 mtg 失败\n"
-            exit 1
+            print_error_exit "Install mtg failed"
         fi
-        echo "Installed for mtg"
+        print_info "Installed for mtg"
     else
-        wget $MTPROTO_URL -O mtproto-proxy -q
-        chmod +x mtproto-proxy
-        ./mtproto-proxy
+        wget $URL_MTPROTO -O $BINARY_MTPROTO_PROXY_PATH -q
+        chmod +x $BINARY_MTPROTO_PROXY_PATH
+        $BINARY_MTPROTO_PROXY_PATH
         exit_code=$?
         if [ $exit_code -ne 0 ] && [ $exit_code -ne 2 ]; then
-            echo -e "[\033[33m提醒\033[0m] 安装 mtproto-proxy 失败\n"
-            exit 1
+            print_error_exit "Install mtproto-proxy failed"
         fi
-        echo "Installed for mtproto-proxy"
+        print_info "Installed for mtproto-proxy"
     fi
 }
 
@@ -289,18 +306,38 @@ print_line() {
     echo -e "========================================="
 }
 
+print_error_exit() {
+    print_line
+    echo -e "[\033[95mERROR\033[0m] $1"
+    print_line
+    exit 1
+}
+
+print_warning() {
+    echo -e "[\033[33mWARNING\033[0m] $1"
+}
+
+print_info() {
+    echo -e "[\033[32mINFO\033[0m] $1"
+}
+
+print_subject() {
+    echo -e "\n\033[32m> $1\033[0m"
+}
+
+
 do_kill_process() {
     cd $WORKDIR
-    source ./mtp_config
+    source $CONFIG_PATH
 
     if is_port_open $port; then
-        echo "检测到端口 $port 被占用, 准备杀死进程!"
+        print_info "Detected port $port is occupied, preparing to kill process!"
         kill_process_by_port $port
     fi
     
-    if is_port_open $web_port; then
-        echo "检测到端口 $web_port 被占用, 准备杀死进程!"
-        kill_process_by_port $web_port
+    if is_port_open $statport; then
+        print_info "Detected port $statport is occupied, preparing to kill process!"
+        kill_process_by_port $statport
     fi
 }
 
@@ -310,13 +347,20 @@ do_check_system_datetime_and_update() {
     offset=$(abs $(( "$dateFromServer" - "$dateFromLocal")))
     tolerance=60
     if [ "$offset" -gt "$tolerance" ];then
-        echo "检测到系统时间不同步于世界时间, 即将更新"
+        print_info "Detected system time is not synchronized with world time, preparing to update"
         ntpdate -u time.google.com
+        if [ $? -ne 0 ]; then
+            if [[ "$IS_DOCKER" == "true" ]]; then
+                print_warning "Update system time failed, please manually update the system time"
+            else
+                print_error_exit "Update system time failed, please manually update the system time"
+            fi
+        fi
     fi
 }
 
 do_install_basic_dep() {
-    echo -e "[\033[33m提醒\033[0m] 正在检测并安装基础依赖...\n"
+    print_info "Checking and installing basic dependencies..."
     if check_sys packageManager yum; then
         yum update && yum install -y iproute curl wget procps-ng.x86_64 net-tools ntp
     elif check_sys packageManager apt; then
@@ -331,6 +375,7 @@ do_install_basic_dep() {
 }
 
 do_install_build_dep() {
+    print_info "Checking and installing build dependencies..."
     if check_sys packageManager yum; then
         yum install -y git  openssl-devel zlib-devel
         yum groupinstall -y "Development Tools"
@@ -345,12 +390,12 @@ do_config_mtp() {
 
     while true; do
         default_provider=1
-        echo -e "请输入要安装的程序版本"
+        print_subject "请输入要安装的程序版本"
         echo -e "1. Telegram 官方版本 (C语言, 存在一些问题, 只支持 x86_64)"
         echo -e "2. 9seconds 第三方版本(兼容性强)"
 
         if ! is_supported_official_version; then
-            echo -e "\n[\033[33m提醒\033[0m] 你的系统不支持官方版本\n"
+            print_warning "你的系统不支持该版本"
         fi
 
         read -p "(默认版本: ${default_provider}):" input_provider
@@ -366,12 +411,12 @@ do_config_mtp() {
                 break
             fi
         fi
-        echo -e "[\033[33m错误\033[0m] 请重新输入程序版本 [1-65535]\n"
+        print_warning "请重新输入程序版本 [1-3]\n"
     done
 
     while true; do
         default_port=443
-        echo -e "请输入一个客户端连接端口 [1-65535]"
+        print_subject "请输入一个客户端连接端口 [1-65535]"
         read -p "(默认端口: ${default_port}):" input_port
         [ -z "${input_port}" ] && input_port=${default_port}
         expr ${input_port} + 1 &>/dev/null
@@ -385,13 +430,14 @@ do_config_mtp() {
                 break
             fi
         fi
-        echo -e "[\033[33m错误\033[0m] 请重新输入一个客户端连接端口 [1-65535]"
+        print_warning "请重新输入一个客户端连接端口 [1-65535]"
     done
 
     # 管理端口
     while true; do
         default_manage=8888
-        echo -e "请输入一个管理端口 [1-65535]"
+        print_subject "请输入一个管理端口 [1-65535]"
+        echo -e "管理端口仅用于查看一些统计数据, 只监听本地网卡不会对外暴露"
         read -p "(默认端口: ${default_manage}):" input_manage_port
         [ -z "${input_manage_port}" ] && input_manage_port=${default_manage}
         expr ${input_manage_port} + 1 &>/dev/null
@@ -405,13 +451,13 @@ do_config_mtp() {
                 break
             fi
         fi
-        echo -e "[\033[33m错误\033[0m] 请重新输入一个管理端口 [1-65535]"
+        print_warning "请重新输入一个管理端口 [1-65535]"
     done
 
     # domain
     while true; do
         default_domain="azure.microsoft.com"
-        echo -e "请输入一个需要伪装的域名："
+        print_subject "请输入一个需要伪装的域名："
         read -p "(默认域名: ${default_domain}):" input_domain
         [ -z "${input_domain}" ] && input_domain=${default_domain}
         http_code=$(curl -I -m 10 -o /dev/null -s -w %{http_code} $input_domain)
@@ -423,7 +469,7 @@ do_config_mtp() {
             echo
             break
         fi
-        echo -e "[\033[33m状态码：${http_code}错误\033[0m] 域名无法访问,请重新输入或更换域名!"
+        print_warning "域名无法访问,请重新输入或更换域名!"
     done
 
     # config info
@@ -433,7 +479,7 @@ do_config_mtp() {
     # proxy tag
     while true; do
         default_tag=""
-        echo -e "请输入你需要推广的TAG："
+        print_subject "请输入你需要推广的TAG："
         echo -e "若没有,请联系 @MTProxybot 进一步创建你的TAG, 可能需要信息如下："
         echo -e "IP: ${public_ip}"
         echo -e "PORT: ${input_port}"
@@ -448,19 +494,19 @@ do_config_mtp() {
             echo
             break
         fi
-        echo -e "[\033[33m错误\033[0m] TAG格式不正确!"
+        print_warning "TAG格式不正确!"
     done
 
-    cat >./mtp_config <<EOF
+    cat >$CONFIG_PATH <<EOF
 #!/bin/bash
 secret="${secret}"
 port=${input_port}
-web_port=${input_manage_port}
+statport=${input_manage_port}
 domain="${input_domain}"
-proxy_tag="${input_tag}"
+adtag="${input_tag}"
 provider=${input_provider}
 EOF
-    echo -e "配置已经生成完毕!"
+    print_info "配置已经生成完毕!"
 }
 
 function str_to_hex() {
@@ -476,7 +522,7 @@ function gen_rand_hex() {
 
 info_mtp() {
     if [[ "$1" == "ingore" ]] || is_running_mtp; then
-        source ./mtp_config
+        source $CONFIG_PATH
         public_ip=$(get_ip_public)
 
         domain_hex=$(str_to_hex $domain)
@@ -496,7 +542,7 @@ info_mtp() {
 function get_run_command(){
   cd $WORKDIR
   mtg_provider=$(get_mtg_provider)
-  source ./mtp_config
+  source $CONFIG_PATH
   if [[ "$mtg_provider" == "mtg" ]]; then
       domain_hex=$(str_to_hex $domain)
       client_secret="ee${secret}${domain_hex}"
@@ -504,16 +550,16 @@ function get_run_command(){
       public_ip=$(get_ip_public)
       
       # ./mtg simple-run -n 1.1.1.1 -t 30s -a 512kib 0.0.0.0:$port $client_secret >/dev/null 2>&1 &
-      [[ -f "./mtg" ]] || (echo -e "提醒：\033[33m MTProxy 代理程序不存在请重新安装! \033[0m" && exit 1)
-      echo "./mtg run $client_secret $proxy_tag -b 0.0.0.0:$port --multiplex-per-connection 500 --prefer-ip=ipv4 -t $local_ip:$web_port" -4 "$public_ip:$port"
+      [[ -f "$BINARY_MTG_PATH" ]] || (print_warning "MTProxy 代理程序不存在请重新安装!" && exit 1)
+      echo "$BINARY_MTG_PATH run $client_secret $adtag -b 0.0.0.0:$port --multiplex-per-connection 500 --prefer-ip=ipv4 -t $local_ip:$statport" -4 "$public_ip:$port"
   else
       curl -s https://core.telegram.org/getProxyConfig -o proxy-multi.conf
       curl -s https://core.telegram.org/getProxySecret -o proxy-secret
       nat_info=$(get_nat_ip_param)
       workerman=$(get_cpu_core)
       tag_arg=""
-      [[ -n "$proxy_tag" ]] && tag_arg="-P $proxy_tag"
-      echo "./mtproto-proxy -u nobody -p $web_port -H $port -S $secret --aes-pwd proxy-secret proxy-multi.conf -M $workerman $tag_arg --domain $domain $nat_info --ipv6"
+      [[ -n "$adtag" ]] && tag_arg="-P $adtag"
+      echo "$BINARY_MTPROTO_PROXY_PATH -u nobody -p $statport -H $port -S $secret --aes-pwd proxy-secret proxy-multi.conf -M $workerman $tag_arg --domain $domain $nat_info --ipv6"
   fi
 }
 
@@ -530,7 +576,7 @@ run_mtp() {
         echo $command
         $command >/dev/null 2>&1 &
 
-        echo $! >$pid_file
+        echo $! >$PID_FILE
         sleep 2
         info_mtp
     fi
@@ -577,34 +623,34 @@ debug_mtp() {
 }
 
 stop_mtp() {
-    local pid=$(cat $pid_file)
+    local pid=$(cat $PID_FILE)
     kill -9 $pid
 
     if is_pid_exists $pid; then
-        echo "停止任务失败"
+        print_warning "停止任务失败"
     fi
 }
 
 reinstall_mtp() {
     cd $WORKDIR
-    if [ -f "./mtp_config" ]; then
+    if [ -f "$CONFIG_PATH" ]; then
         while true; do
             default_keep_config="y"
-            echo -e "是否保留配置文件? "
+            print_subject "是否保留配置文件? "
             read -p "y: 保留 , n: 不保留 (默认: ${default_keep_config}):" input_keep_config
             [ -z "${input_keep_config}" ] && input_keep_config=${default_keep_config}
 
             if [[ "$input_keep_config" == "y" ]] || [[ "$input_keep_config" == "n" ]]; then
                 if [[ "$input_keep_config" == "n" ]]; then
-                    rm -f mtp_config
+                    rm -f $CONFIG_PATH
                 fi
                 break
             fi
-            echo -e "[\033[33m错误\033[0m] 输入错误， 请输入 y / n"
+            print_warning "输入错误， 请输入 y / n"
         done
     fi
 
-    if [ ! -f "./mtp_config" ]; then 
+    if [ ! -f "$CONFIG_PATH" ]; then 
         do_install_basic_dep
         do_config_mtp
     fi
@@ -616,16 +662,16 @@ reinstall_mtp() {
 param=$1
 
 if [[ "start" == $param ]]; then
-    echo "即将：启动脚本"
+    print_info "即将：启动脚本"
     run_mtp
 elif [[ "daemon" == $param ]]; then
-    echo "即将：启动脚本(守护进程)"
+    print_info "即将：启动脚本(守护进程)"
     daemon_mtp
 elif [[ "stop" == $param ]]; then
-    echo "即将：停止脚本"
+    print_info "即将：停止脚本"
     stop_mtp
 elif [[ "debug" == $param ]]; then
-    echo "即将：调试运行"
+    print_info "即将：调试运行"
     debug_mtp
 elif [[ "restart" == $param ]]; then
     stop_mtp
@@ -645,20 +691,20 @@ else
     if ! is_installed; then
         echo "MTProxyTLS一键安装运行绿色脚本"
         print_line
-        echo -e "检测到您的配置文件不存在, 为您指引生成!" && print_line
+        print_warning "检测到您的配置文件不存在, 为您指引生成!" && print_line
 
         do_install_basic_dep
         do_config_mtp
         do_install
         run_mtp
     else
-        [ ! -f "$WORKDIR/mtp_config" ] && do_config_mtp
+        [ ! -f "$CONFIG_PATH" ] && do_config_mtp
         echo "MTProxyTLS一键安装运行绿色脚本"
         print_line
         info_mtp
         print_line
         echo -e "脚本源码：https://github.com/ellermister/mtproxy"
-        echo -e "配置文件: $WORKDIR/mtp_config"
+        echo -e "配置文件: $CONFIG_PATH"
         echo -e "卸载方式：直接删除当前目录下文件即可"
         echo "使用方式:"
         echo -e "\t启动服务\t bash $0 start"

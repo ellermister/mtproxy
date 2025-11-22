@@ -13,7 +13,7 @@ RUN set -ex \
     && cd $WORKDIR \
     && cp src/* /usr/share/nginx/html \
     && rm -rf .git \
-    && cp mtproxy-entrypoint.sh /docker-entrypoint.d/40-mtproxy-start.sh \
+    && cp entrypoint.sh /docker-entrypoint.d/40-mtproxy-start.sh \
     && chmod +x /docker-entrypoint.d/40-mtproxy-start.sh \
     && cp -f nginx/default.conf /etc/nginx/conf.d/default.conf \
     && cp -f nginx/ip_white.conf /etc/nginx/ip_white.conf \

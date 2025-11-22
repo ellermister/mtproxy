@@ -19,7 +19,7 @@ set_config(){
 		sed -i 's/secret="[0-9A-Za-z]*"/secret="'$secret'"/' $mtp_config
 	fi
 	if [ "$tag" ] && [[ "$tag" =~ ^[A-Za-z0-9]{32}$ ]]; then
-		sed -i 's/proxy_tag="[0-9A-Za-z]*"/proxy_tag="'$tag'"/' $mtp_config
+		sed -i 's/adtag="[0-9A-Za-z]*"/adtag="'$tag'"/' $mtp_config
 	fi
 	if [ "$domain" ]; then
 		sed -i 's/domain="[0-9A-z\.\-]*"/domain="'$domain'"/' $mtp_config
