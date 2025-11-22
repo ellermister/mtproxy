@@ -276,10 +276,6 @@ do_install_proxy() {
         fi
         echo "Installed for mtproto-proxy"
     fi
-
-    if [ ! -d "./pid" ]; then
-        mkdir "./pid"
-    fi
 }
 
 do_install() {
@@ -289,6 +285,9 @@ do_install() {
 
     do_install_proxy $mtg_provider
 
+    if [ ! -d "./pid" ]; then
+        mkdir "./pid"
+    fi
 }
 
 print_line() {
