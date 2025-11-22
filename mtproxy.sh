@@ -251,11 +251,6 @@ do_install_proxy() {
     local mtg_provider=$1
 
     if [[ "$mtg_provider" == "mtg" ]]; then
-        local arch=$(get_architecture)
-        if [ "amd64" != "$arch" ]; then
-            echo -e "[\033[33m提醒\033[0m] 你的系统架构不支持安装 mtg\n"
-            exit 1
-        fi
         wget $MTG_URL -O mtg -q
         chmod +x mtg
         ./mtg
