@@ -724,8 +724,6 @@ elif [[ "restart" == $param ]]; then
 elif [[ "reinstall" == $param ]]; then
     reinstall_mtp
 elif [[ "build" == $param ]]; then
-    do_install_proxy "python-mtprotoproxy"
-    exit 0
     arch=$(get_architecture)
     if [[ "$arch" == "amd64" ]]; then
         # build_mtproto 1
