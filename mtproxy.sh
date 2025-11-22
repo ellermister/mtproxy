@@ -3,6 +3,10 @@ WORKDIR=$(dirname $(readlink -f $0))
 cd $WORKDIR
 pid_file=$WORKDIR/pid/pid_mtproxy
 
+
+MTG_URL="https://github.com/ellermister/mtproxy/releases/download/v0.04/$(uname -m)-mtg"
+MTPROTO_URL="https://github.com/ellermister/mtproxy/releases/download/v0.04/mtproto-proxy"
+
 check_sys() {
     local checkType=$1
     local value=$2
@@ -243,10 +247,8 @@ function is_pid_exists() {
     fi
 }
 
-do_install() {
-    cd $WORKDIR
-
-    mtg_provider=$(get_mtg_provider)
+do_install_proxy() {
+    $mtg_provider=$1
 
     if [[ "$mtg_provider" == "mtg" ]]; then
         local arch=$(get_architecture)
@@ -254,19 +256,38 @@ do_install() {
             echo -e "[\033[33m提醒\033[0m] 你的系统架构不支持安装 mtg\n"
             exit 1
         fi
-        local mtg_url="https://github.com/ellermister/mtproxy/releases/download/v0.04/mtg"
-        wget $mtg_url -O mtg
+        wget $MTG_URL -O mtg -q
         chmod +x mtg
-
-        [[ -f "./mtg" ]] && ./mtg && echo "Installed for mtg"
+        ./mtg
+        exit_code=$?
+        if [ $exit_code -ne 0 ]; then
+            echo -e "[\033[33m提醒\033[0m] 安装 mtg 失败\n"
+            exit 1
+        fi
+        echo "Installed for mtg"
     else
-        wget https://github.com/ellermister/mtproxy/releases/download/v0.04/mtproto-proxy -O mtproto-proxy -q
+        wget $MTPROTO_URL -O mtproto-proxy -q
         chmod +x mtproto-proxy
+        ./mtproto-proxy
+        exit_code=$?
+        if [ $exit_code -ne 0 ] && [ $exit_code -ne 2 ]; then
+            echo -e "[\033[33m提醒\033[0m] 安装 mtproto-proxy 失败\n"
+            exit 1
+        fi
+        echo "Installed for mtproto-proxy"
     fi
 
     if [ ! -d "./pid" ]; then
         mkdir "./pid"
     fi
+}
+
+do_install() {
+    cd $WORKDIR
+
+    mtg_provider=$(get_mtg_provider)
+
+    do_install_proxy $mtg_provider
 
 }
 
@@ -615,16 +636,17 @@ elif [[ "debug" == $param ]]; then
 elif [[ "restart" == $param ]]; then
     stop_mtp
     run_mtp
-    debug_mtp
 elif [[ "reinstall" == $param ]]; then
     reinstall_mtp
 elif [[ "build" == $param ]]; then
     arch=$(get_architecture)
     if [[ "$arch" == "amd64" ]]; then
-        build_mtproto 1
+        # build_mtproto 1
+        do_install_proxy "mtproto-proxy"
     fi
     
-     build_mtproto 2
+    # build_mtproto 2
+    do_install_proxy "mtg"
 else
     if ! is_installed; then
         echo "MTProxyTLS一键安装运行绿色脚本"
