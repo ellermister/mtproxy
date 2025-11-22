@@ -5,7 +5,8 @@
 
 # mtproxy
 
-这是一个一键安装 MTProxy 代理的绿色脚本，脚本可以在官方版本的 MTProxy 程序和兼容性最强的第三方作者开发的 mtg 程序中进行选择静态安装或者编译，该版本默认支持 Fake TLS 以及 AdTag 配置。
+这是一个一键安装 MTProxy 代理的自动化脚本, 用于 Telegram 客户端进行连接。脚本默认支持 Fake TLS 和 AdTag 配置。
+
 
 在此基础上，提供了 Nginx 作为前端转发，MTProxy 作为后端代理的方式以实现安全的伪装。并且在 Nginx 转发层进行配置了 IP 白名单，只有通过白名单认证过的 IP 才可以进行访问。
 
@@ -19,11 +20,11 @@ Telegram 群组：<https://t.me/EllerHK>
 
 提供了两种安装方式可供选择：
 
-- 使用脚本
+- 使用脚本 (建议 Debian/Ubuntu)
 
   选择该方式一般是你在宿主机中进行直接安装或者编译，会或多或少需要安装一些系统基础依赖库。
 
-- 使用 Docker
+- 使用 Docker (任意支持docker的系统均可)
 
   **小白建议使用 Docker!** 不会对宿主机造成污染，如果你需要修改一些配置文件，需要你稍微学习一些基础 Docker 使用技术。
 
@@ -177,3 +178,4 @@ cd /home/mtproxy && bash mtproxy.sh start > /dev/null 2>&1 &
 
 - <https://github.com/TelegramMessenger/MTProxy>
 - <https://github.com/9seconds/mtg>
+- <https://github.com/alexbers/mtprotoproxy>

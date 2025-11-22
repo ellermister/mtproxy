@@ -5,28 +5,33 @@
 
 # mtproxy
 
-MTProxyTLS one-click install lightweight script.  
-With Nginx as a Forward Proxy, access is only granted with an IP whitelist.
+A one-click installation automation script for MTProxy, designed for Telegram client connections. The script supports Fake TLS and AdTag configuration by default.
 
-## Discussion
+Additionally, it provides Nginx as a frontend proxy and MTProxy as a backend proxy to achieve secure traffic disguise. IP whitelist is configured at the Nginx forwarding layer, allowing only whitelisted IPs to access the service.
+
+> Docker images are provided for out-of-the-box usage.
+
+## Community
 
 Telegram Group: <https://t.me/EllerHK>
 
-## Install method
+## Installation Methods
 
-- Script
+Two installation methods are available:
 
-  This method generally requires you to install or compile directly on your machine, which may require the installation of some basic system dependency libraries.
+- **Script Installation** (Recommended for Debian/Ubuntu)
 
-- Docker
+  This method requires direct installation or compilation on your host machine, which may require installing some basic system dependency libraries.
 
-  **Recommended!** Will not broke your system or dependencies. Just need to know some basic Docker knowledge.
+- **Docker Installation** (Any system that supports Docker)
 
-### Script
+  **Beginners are recommended to use Docker!** It won't pollute your host system. If you need to modify configuration files, you'll need to learn some basic Docker usage.
 
-> If you repeatedly encounter errors or other unknown problems, it is recommended to switch to a Debian 9+ system or use Docker.
+### Script Installation
 
-Execute the following code to install
+> If you repeatedly encounter errors or other unknown issues, it is recommended to switch to a Debian 9+ system or use Docker instead.
+
+Execute the following commands to install:
 
 ```bash
 rm -rf /home/mtproxy && mkdir /home/mtproxy && cd /home/mtproxy
@@ -38,18 +43,18 @@ bash mtproxy.sh
 
 ### Docker | Whitelist MTProxy Docker Image
 
-The image integrates nginx and mtproxy+tls to disguise traffic, and uses a **white-list** mode to deal with firewall detection.
+This image integrates nginx and mtproxy+tls to disguise traffic, and uses **whitelist** mode to deal with firewall detection.
 
-If you use this Docker image, you don't need to use the script anymore, you can choose one of the two, don't mix it up.
+**If you use this Docker image, you don't need to use the script anymore. Choose one of the two methods, don't mix them up.**
 
-**If you didn't install Docker before**, below is the install script:
+**If Docker is not installed**, use the following one-click installation:
 
 ```bash
 curl -fsSL https://get.docker.com -o get-docker.sh
 sh get-docker.sh
 ```
 
-**Start the container with whitelist:**
+**Create container with whitelist:**
 
  ```bash
 docker run -d \
@@ -61,8 +66,8 @@ docker run -d \
 ellermister/mtproxy
  ```
 
-**The image enabled the IP segment whitelist by default.**  
-If you don't need it, you can cancel it:
+**The image enables IP segment whitelist by default.**  
+If you don't need it, you can disable it by setting `ip_white_list="OFF"`:
 
 ```bash
 docker run -d \
@@ -76,35 +81,35 @@ docker run -d \
 ellermister/mtproxy
 ```
 
-`ip_white_list` :
+`ip_white_list` options:
 
-- **OFF** disable whitelist
-- **IP** enable IP whitelist
-- **IPSEG** enable IPSEG whitelist
+- **OFF** - Disable whitelist
+- **IP** - Enable IP whitelist
+- **IPSEG** - Enable IP segment whitelist
 
-`secret`:If you want to create a known key, the format is: 32 hexadecimal characters.
+`secret`: If you want to create a known secret key, the format should be: 32 hexadecimal characters.
 
-**View the parameter configuration of the link in the log**:
+**View link configuration parameters in logs:**
 
 ```bash
 docker logs -f mtproxy
 ```
 
-Please change the HOST_PORT which is for the connection, the HOST_PORT in the above example is `8443`.
+Remember to change the connection port to your mapped external port. In the examples above, the port is `8443`. Modify the port when connecting.
 
-For more usage: <https://hub.docker.com/r/ellermister/nginx-mtproxy>
+For more usage, please refer to: <https://hub.docker.com/r/ellermister/mtproxy>
 
 ## Usage
 
-Configuration file `mtp_config`, pay attention to the format if you want to change secret manually.
+Configuration file is `config`. If you want to manually modify the secret or parameters, please pay attention to the format.
 
 Start service
 
 ```bash
- bash mtproxy.sh start
+bash mtproxy.sh start
 ```
 
-Debug service
+Debug mode
 
 ```bash
 bash mtproxy.sh debug
@@ -130,7 +135,7 @@ bash mtproxy.sh reinstall
 
 ## Uninstall
 
-Just delete the directory where it is located.
+Since it's a portable version, uninstallation is extremely simple - just delete the directory.
 
 ```bash
 rm -rf /home/mtproxy
@@ -138,19 +143,23 @@ rm -rf /home/mtproxy
 
 ## Run on Startup
 
-Edit `/etc/rc.local` and add the following code to the script:
+> This script is not configured as a system service. You can add it to your startup script.
+
+For the startup script, if your `rc.local` file doesn't exist, please check your startup service.
+
+Edit the file `/etc/rc.local` and add the following code to the startup script:
 
 ```bash
 cd /home/mtproxy && bash mtproxy.sh start > /dev/null 2>&1 &
 ```
 
-## Crontab
+## Crontab Daemon
 
-Due to the bug in the official mtproxy, there are problems with process processing when the pid is over 65535, and the process is prone to necrosis and abnormal exit.
+Due to bugs in the official mtproxy program, there are issues with process handling when the PID exceeds 65535, causing the process to become unresponsive and exit abnormally.
 
 Therefore, it is recommended to monitor the process through scheduled tasks `crontab -e`:
 
-Check the process and start it every minute
+Check and start the process every minute
 
 ```bash
 * * * * * cd /home/mtproxy && bash mtproxy.sh start > /dev/null 2>&1 &
@@ -161,10 +170,11 @@ Check the process and start it every minute
 <https://t.me/MTProxybot>
 > Sorry, an error has occurred during your request. Please try again later.(Code xxxxxx)
 
-If you encounter such an error when applying for binding agent promotion, the official does not give a clear reason. According to feedback from netizens, such problems mostly occur due to insufficient account registration and 2 to 3 years.  
+If you encounter such an error when applying to bind proxy promotion, the official has not given a clear reason. According to user feedback, such problems mostly occur with accounts registered for less than 2-3 years.  
 **It is recommended to use accounts that are more than 3 years old and accounts that have not been banned.**
 
-## Open Source Used
+## References
 
 - <https://github.com/TelegramMessenger/MTProxy>
 - <https://github.com/9seconds/mtg>
+- <https://github.com/alexbers/mtprotoproxy>
