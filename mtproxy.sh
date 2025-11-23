@@ -644,7 +644,7 @@ daemon_mtp() {
                 sleep 2
                 info_mtp "ingore"
             } &
-            $command >/dev/null 2>&1
+            $command >/dev/null
             print_warning "进程检测到被关闭,正在重启中!!!"
             sleep 2
         done
