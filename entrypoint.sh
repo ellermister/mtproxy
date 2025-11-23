@@ -5,8 +5,8 @@ chmod 777 /etc/nginx/ip_white.conf
 chmod 777 /run/php/php-fpm.sock
 
 
-default_config="/home/mtproxy/mtp_config.example"
-mtp_config="/home/mtproxy/mtp_config"
+config_default_path="/home/mtproxy/config.example"
+config_path="/home/mtproxy/config"
 
 function gen_rand_hex() {
     local result=$(dd if=/dev/urandom bs=1 count=500 status=none | od -An -tx1 | tr -d ' \n')
@@ -16,21 +16,21 @@ function gen_rand_hex() {
 
 set_config(){
 	if [ "$secret" ] && [[ "$secret" =~ ^[A-Za-z0-9]{32}$ ]]; then
-		sed -i 's/secret="[0-9A-Za-z]*"/secret="'$secret'"/' $mtp_config
+		sed -i 's/secret="[0-9A-Za-z]*"/secret="'$secret'"/' $config_path
 	fi
 	if [ "$adtag" ] && [[ "$adtag" =~ ^[A-Za-z0-9]{32}$ ]]; then
-		sed -i 's/adtag="[0-9A-Za-z]*"/adtag="'$adtag'"/' $mtp_config
+		sed -i 's/adtag="[0-9A-Za-z]*"/adtag="'$adtag'"/' $config_path
 	fi
 	if [ "$domain" ]; then
-		sed -i 's/domain="[0-9A-z\.\-]*"/domain="'$domain'"/' $mtp_config
+		sed -i 's/domain="[0-9A-z\.\-]*"/domain="'$domain'"/' $config_path
 	fi
 	if [ "$provider" ] && [[ "$provider" =~ ^[1-3]$ ]]; then
-		sed -i 's/provider=[0-9]\+/provider='$provider'/' $mtp_config
+		sed -i 's/provider=[0-9]\+/provider='$provider'/' $config_path
 	fi
 }
 
-if [ ! -f $mtp_config ];then
-	cp "${default_config}" "$mtp_config"
+if [ ! -f $config_path ];then
+	cp "${config_default_path}" "$config_path"
 
   # if params is empty, then generate random values
 	if [ ! "$secret" ]; then
