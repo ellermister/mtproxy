@@ -72,9 +72,9 @@ function get_ip_public() {
     local public_ip=""
 
     # 尝试 Cloudflare trace API
-    # if [ -z "$public_ip" ]; then
-    #     public_ip=$(curl -4 -s --connect-timeout 5 --max-time 10 https://1.1.1.1/cdn-cgi/trace -A Mozilla 2>/dev/null | grep "^ip=" | cut -d'=' -f2)
-    # fi
+    if [ -z "$public_ip" ]; then
+        public_ip=$(curl -4 -s --connect-timeout 5 --max-time 10 https://cloudflare.com/cdn-cgi/trace -A Mozilla 2>/dev/null | grep "^ip=" | cut -d'=' -f2)
+    fi
     
     # 尝试 ip.sb API获取公网IP
     if [ -z "$public_ip" ]; then
