@@ -70,27 +70,66 @@ function abs() {
 
 function get_ip_public() {
     local public_ip=""
+    local _IP_REGEX='^([0-9]{1,3}\.){3}[0-9]{1,3}$'
+    local _UA="Mozilla/5.0 (compatible)"
 
-    # 尝试 Cloudflare trace API
-    if [ -z "$public_ip" ]; then
-        public_ip=$(curl -4 -s --connect-timeout 5 --max-time 10 https://cloudflare.com/cdn-cgi/trace -A Mozilla 2>/dev/null | grep "^ip=" | cut -d'=' -f2)
+    # 1. 优先尝试 GCP 元数据服务 (限速 2s，避免非 GCP 环境挂起)
+    public_ip=$(curl -s -m 2 \
+        -H "Metadata-Flavor: Google" \
+        "http://metadata.google.internal/computeMetadata/v1/instance/network-interfaces/0/access-configs/0/external-ip" \
+        2>/dev/null | tr -d '\n\r')
+
+    if [[ "$public_ip" =~ $_IP_REGEX ]]; then
+        echo "$public_ip"
+        return 0
     fi
-    
-    # 尝试 ip.sb API获取公网IP
-    if [ -z "$public_ip" ]; then
-        public_ip=$(curl -s --connect-timeout 5 --max-time 10 https://api.ip.sb/ip -A Mozilla --ipv4 2>/dev/null)
+
+    # 2. 非 GCP 环境：并发请求三个平台，多数投票
+    local tmp_dir
+    tmp_dir=$(mktemp -d)
+    local f_cf="$tmp_dir/cf" f_sb="$tmp_dir/sb" f_io="$tmp_dir/io"
+
+    # 并发请求（后台执行）
+    curl --ipv4 -s --connect-timeout 5 --max-time 8 -A "$_UA" \
+        "https://1.1.1.1/cdn-cgi/trace" 2>/dev/null \
+        | grep "^ip=" | cut -d'=' -f2 | tr -d '\n\r' > "$f_cf" &
+
+    curl --ipv4 -s --connect-timeout 5 --max-time 8 -A "$_UA" \
+        "https://api.ip.sb/ip" 2>/dev/null \
+        | tr -d '\n\r' > "$f_sb" &
+
+    curl --ipv4 -s --connect-timeout 5 --max-time 8 -A "$_UA" \
+        "https://ipinfo.io/ip" 2>/dev/null \
+        | tr -d '\n\r' > "$f_io" &
+
+    wait  # 等待所有并发请求完成
+
+    # 收集并验证格式
+    local ip_list=()
+    local ip_cf ip_sb ip_io
+    ip_cf=$(cat "$f_cf" 2>/dev/null); rm -rf "$tmp_dir"
+    ip_sb=$(cat "$f_sb" 2>/dev/null)
+    ip_io=$(cat "$f_io" 2>/dev/null)
+
+    [[ "$ip_cf" =~ $_IP_REGEX ]] && ip_list+=("$ip_cf")
+    [[ "$ip_sb" =~ $_IP_REGEX ]] && ip_list+=("$ip_sb")
+    [[ "$ip_io" =~ $_IP_REGEX ]] && ip_list+=("$ip_io")
+
+    if [[ ${#ip_list[@]} -eq 0 ]]; then
+        print_error_exit "Failed to get public IP from all sources. Check your network."
     fi
-    
-    # 尝试 ipinfo.io API
-    if [ -z "$public_ip" ]; then
-        public_ip=$(curl -s --connect-timeout 5 --max-time 10 https://ipinfo.io/ip -A Mozilla --ipv4 2>/dev/null)
+
+    # 投票：取出现频次最高的 IP
+    local final_ip
+    final_ip=$(printf "%s\n" "${ip_list[@]}" \
+        | sort | uniq -c | sort -rn | head -n1 | awk '{print $2}')
+
+    # 验证最终结果格式
+    if [[ "$final_ip" =~ $_IP_REGEX ]]; then
+        echo "$final_ip"
+    else
+        print_error_exit "Failed to parse a valid public IP address."
     fi
-    
-    # 如果所有API都失败，退出
-    if [ -z "$public_ip" ]; then
-        print_error_exit "Failed to get public IP address. Please check your network connection."
-    fi
-    echo "$public_ip"
 }
 
 function get_ip_private() {
