@@ -76,7 +76,6 @@ function get_ip_public() {
 
     # 声明所有渠道：格式 "tmpfile|url|curl额外参数|后处理管道"
     local -a sources=(
-        "$tmp_dir/gcp|http://metadata.google.internal/computeMetadata/v1/instance/network-interfaces/0/access-configs/0/external-ip|-s -m 2 -H 'Metadata-Flavor: Google'|cat"
         "$tmp_dir/cf|https://1.1.1.1/cdn-cgi/trace|--ipv4 -s --connect-timeout 5 --max-time 8 -A '$_UA'|grep '^ip=' | cut -d= -f2"
         "$tmp_dir/sb|https://api.ip.sb/ip|--ipv4 -s --connect-timeout 5 --max-time 8 -A '$_UA'|cat"
         "$tmp_dir/io|https://ipinfo.io/ip|--ipv4 -s --connect-timeout 5 --max-time 8 -A '$_UA'|cat"
