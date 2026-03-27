@@ -69,28 +69,45 @@ function abs() {
 }
 
 function get_ip_public() {
-    local public_ip=""
+    local _IP_REGEX='^([0-9]{1,3}\.){3}[0-9]{1,3}$'
+    local _UA="Mozilla/5.0 (compatible)"
+    local tmp_dir
+    tmp_dir=$(mktemp -d)
 
-    # 尝试 Cloudflare trace API
-    if [ -z "$public_ip" ]; then
-        public_ip=$(curl -4 -s --connect-timeout 5 --max-time 10 https://cloudflare.com/cdn-cgi/trace -A Mozilla 2>/dev/null | grep "^ip=" | cut -d'=' -f2)
-    fi
-    
-    # 尝试 ip.sb API获取公网IP
-    if [ -z "$public_ip" ]; then
-        public_ip=$(curl -s --connect-timeout 5 --max-time 10 https://api.ip.sb/ip -A Mozilla --ipv4 2>/dev/null)
-    fi
-    
-    # 尝试 ipinfo.io API
-    if [ -z "$public_ip" ]; then
-        public_ip=$(curl -s --connect-timeout 5 --max-time 10 https://ipinfo.io/ip -A Mozilla --ipv4 2>/dev/null)
-    fi
-    
-    # 如果所有API都失败，退出
-    if [ -z "$public_ip" ]; then
-        print_error_exit "Failed to get public IP address. Please check your network connection."
-    fi
-    echo "$public_ip"
+    # 声明所有渠道：格式 "tmpfile|url|curl额外参数|后处理管道"
+    local -a sources=(
+        "$tmp_dir/gcp|http://metadata.google.internal/computeMetadata/v1/instance/network-interfaces/0/access-configs/0/external-ip|-s -m 2 -H 'Metadata-Flavor: Google'|cat"
+        "$tmp_dir/cf|https://1.1.1.1/cdn-cgi/trace|--ipv4 -s --connect-timeout 5 --max-time 8 -A '$_UA'|grep '^ip=' | cut -d= -f2"
+        "$tmp_dir/sb|https://api.ip.sb/ip|--ipv4 -s --connect-timeout 5 --max-time 8 -A '$_UA'|cat"
+        "$tmp_dir/io|https://ipinfo.io/ip|--ipv4 -s --connect-timeout 5 --max-time 8 -A '$_UA'|cat"
+    )
+
+    # 并发请求所有渠道
+    for src in "${sources[@]}"; do
+        IFS='|' read -r f url opts pipe <<< "$src"
+        eval "curl $opts '$url' 2>/dev/null | $pipe | tr -d '\n\r' > '$f'" &
+    done
+    wait
+
+    # 收集并验证格式
+    local ip_list=()
+    for src in "${sources[@]}"; do
+        local f="${src%%|*}"
+        local ip; ip=$(cat "$f" 2>/dev/null)
+        [[ "$ip" =~ $_IP_REGEX ]] && ip_list+=("$ip")
+    done
+    rm -rf "$tmp_dir"
+
+    [[ ${#ip_list[@]} -eq 0 ]] && print_error_exit "Failed to get public IP from all sources. Check your network."
+
+    # 投票：取出现频次最高的 IP
+    local final_ip
+    final_ip=$(printf "%s\n" "${ip_list[@]}" \
+        | sort | uniq -c | sort -rn | awk 'NR==1{print $2}')
+
+    [[ "$final_ip" =~ $_IP_REGEX ]] \
+        && echo "$final_ip" \
+        || print_error_exit "Failed to parse a valid public IP address."
 }
 
 function get_ip_private() {
