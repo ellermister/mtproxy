@@ -388,6 +388,66 @@ do_check_system_datetime_and_update() {
     fi
 }
 
+check_tg_connectivity() {
+    local config_url="https://core.telegram.org/getProxyConfig"
+    local connect_timeout=3
+    local max_time=3
+    local tmp_config
+    local tmp_targets
+    local total
+    local ok_count=0
+    local fail_count=0
+    local curl_code
+
+    tmp_config=$(mktemp)
+    tmp_targets=$(mktemp)
+
+    print_info "正在获取 Telegram 代理配置: $config_url"
+    if ! curl -fsSL --noproxy '*' --connect-timeout "$connect_timeout" --max-time 10 "$config_url" -o "$tmp_config"; then
+        rm -f "$tmp_config" "$tmp_targets"
+        print_error_exit "无法获取 Telegram 代理配置，请检查当前服务器网络"
+    fi
+
+    awk '/^proxy_for[[:space:]]/ {
+        target=$NF
+        gsub(/;/, "", target)
+        if (target ~ /^[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*:[0-9][0-9]*$/) {
+            print target
+        }
+    }' "$tmp_config" | sort -u > "$tmp_targets"
+
+    total=$(wc -l < "$tmp_targets" | tr -d ' ')
+    if [ "$total" -eq 0 ]; then
+        rm -f "$tmp_config" "$tmp_targets"
+        print_error_exit "Telegram 代理配置中没有找到可检查的 IP:PORT"
+    fi
+
+    print_info "共发现 $total 个 Telegram 目标地址，单个连接超时 ${connect_timeout}s"
+    print_line
+
+    while IFS= read -r target; do
+        [ -z "$target" ] && continue
+
+        # Telegram 端口不一定返回 HTTP 200；空响应(52)也说明端口已响应。
+        curl -sS --noproxy '*' --connect-timeout "$connect_timeout" --max-time "$max_time" -o /dev/null "http://$target" 2>/dev/null
+        curl_code=$?
+        if [ "$curl_code" -eq 0 ] || [ "$curl_code" -eq 52 ]; then
+            ok_count=$((ok_count + 1))
+            echo -e "[\033[32mOK\033[0m] $target"
+        else
+            fail_count=$((fail_count + 1))
+            echo -e "[\033[31mFAIL\033[0m] $target"
+        fi
+    done < "$tmp_targets"
+
+    rm -f "$tmp_config" "$tmp_targets"
+
+    print_line
+    print_info "Telegram 连通性检查完成：成功 $ok_count / 失败 $fail_count"
+
+    [ "$ok_count" -gt 0 ]
+}
+
 do_install_basic_dep() {
     print_info "Checking and installing basic dependencies..."
     if check_sys packageManager yum; then
@@ -721,7 +781,7 @@ reinstall_mtp() {
 
 param=$1
 
-if [ -z "$PUBLIC_IP" ]; then
+if [ -z "$PUBLIC_IP" ] && [[ "check_tg" != "$param" ]] && [[ "tgcheck" != "$param" ]] && [[ "check-tg" != "$param" ]]; then
     PUBLIC_IP=$(get_ip_public) || print_error_exit "Failed to get public IP address. Please check your network connection."
 fi
 
@@ -752,6 +812,9 @@ elif [[ "build" == $param ]]; then
     # build_mtproto 2
     do_install_proxy "mtg"
     do_install_proxy "python-mtprotoproxy"
+elif [[ "check_tg" == $param ]] || [[ "tgcheck" == $param ]] || [[ "check-tg" == $param ]]; then
+    print_info "即将：检查当前服务器到 Telegram 的 TCP 连通性"
+    check_tg_connectivity
 else
     if ! is_installed; then
         echo "MTProxyTLS一键安装运行绿色脚本"
@@ -777,5 +840,6 @@ else
         echo -e "\t停止服务\t bash $0 stop"
         echo -e "\t重启服务\t bash $0 restart"
         echo -e "\t重新安装代理程序 bash $0 reinstall"
+        echo -e "\t检查TG连通性\t bash $0 check_tg"
     fi
 fi
